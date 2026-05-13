@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { FaSearch, FaStar } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import axiosInstance from '../config/axiosConfig';
+import BannerCarousel from '../components/BannerCarousel'; // IMPORTACIÓN NUEVA
 
 const LandingPage = () => {
     const [productos, setProductos] = useState([]);
@@ -44,6 +45,9 @@ const LandingPage = () => {
 
     return (
         <div className="landing-page">
+            {/* EL CARRUSEL NUEVO ARRIBA DE TODO */}
+            <BannerCarousel />
+
             {/* Hero Section */}
             <section className="hero">
                 <div className="hero-inner">
