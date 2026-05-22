@@ -13,26 +13,36 @@ const DashboardComprador = () => {
   }, []);
 
   const fetchData = async () => {
+    // 1. Pedimos las compras por separado (Si falla lo demás, esto sí carga)
     try {
-      const [transRes, favRes, convRes] = await Promise.all([
-        axiosInstance.get('/transacciones'),
-        axiosInstance.get('/favoritos'),
-        axiosInstance.get('/conversaciones')
-      ]);
-
+      const transRes = await axiosInstance.get('/transacciones');
       setTransacciones(transRes.data.transacciones || []);
+    } catch (err) {
+      console.error('Error al cargar transacciones:', err);
+    }
+
+    // 2. Pedimos los favoritos
+    try {
+      const favRes = await axiosInstance.get('/favoritos');
       setFavoritos(favRes.data.favoritos || []);
+    } catch (err) {
+      console.error('Error al cargar favoritos:', err);
+    }
+
+    // 3. Pedimos los chats
+    try {
+      const convRes = await axiosInstance.get('/conversaciones');
       setConversaciones(convRes.data.conversaciones || []);
     } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-    } finally {
-      setLoading(false);
+      console.error('Error al cargar chats:', err);
     }
+
+    setLoading(false);
   };
 
   return (
     <div className="container">
-      <h1 className="text-4xl font-bold mb-8">Dashboard Comprador</h1>
+      <h1 className="text-4xl font-bold mb-8">Mi perfil</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div className="card">
@@ -81,8 +91,8 @@ const DashboardComprador = () => {
             </thead>
             <tbody>
               {transacciones.slice(0, 5).map((trans) => (
-                <tr key={trans.id_transaccion} className="border-b hover:bg-gray-50">
-                  <td className="p-4">{trans.nombre}</td>
+                <tr key={trans.id_transacciones} className="border-b hover:bg-gray-50">
+                  <td className="p-4">{trans.titulo}</td>
                   <td className="p-4">${trans.monto_total}</td>
                   <td className="p-4">
                     <span className={`px-3 py-1 rounded-full text-sm font-bold ${
@@ -90,7 +100,7 @@ const DashboardComprador = () => {
                       trans.estado_transaccion === 'pendiente' ? 'bg-yellow-200 text-yellow-800' :
                       'bg-red-200 text-red-800'
                     }`}>
-                      {trans.estado_transaccion}
+                      {trans.estado_transaccion || 'Completada'}
                     </span>
                   </td>
                   <td className="p-4">{new Date(trans.fecha_transaccion).toLocaleDateString()}</td>

@@ -6,7 +6,7 @@ const compraSchema = Joi.object({
     cantidad: Joi.number().integer().min(1).required()
 });
 
-// Crear transacción (compra)
+// Crear transacción (compra) - CORREGIDO: Ya incluye id_vendedor
 const crearTransaccion = async (req, res) => {
     try {
         const { error, value } = compraSchema.validate(req.body);
@@ -16,49 +16,50 @@ const crearTransaccion = async (req, res) => {
         const id_comprador = req.user.id_usuario;
         const connection = await pool.getConnection();
 
-        // Obtener producto
-        const [productos] = await connection.query('SELECT * FROM productos WHERE id_producto = ? AND eliminado = FALSE', [id_producto]);
+        // Obtener producto (Le quitamos la regla de 'eliminado' que no existe)
+        const [productos] = await connection.query('SELECT * FROM productos WHERE id_producto = ?', [id_producto]);
+        
         if (productos.length === 0 || productos[0].cantidad_disponible < cantidad) {
-        connection.release();
-        return res.status(400).json({ success: false, message: 'Producto no disponible' });
+            connection.release();
+            return res.status(400).json({ success: false, message: 'Producto no disponible o stock insuficiente' });
         }
 
         const producto = productos[0];
         const monto_total = producto.precio * cantidad;
 
-        // Crear transacción
+        // Crear transacción (Aquí agregamos producto.id_vendedor para que la base de datos no se queje)
         const [result] = await connection.query(
-        'INSERT INTO transacciones (id_producto, id_comprador, cantidad, precio_unitario, monto_total) VALUES (?, ?, ?, ?, ?)',
-        [id_producto, id_comprador, cantidad, producto.precio, monto_total]
+            'INSERT INTO transacciones (id_producto, id_comprador, id_vendedor, cantidad, precio_unitario, monto_total) VALUES (?, ?, ?, ?, ?, ?)',
+            [id_producto, id_comprador, producto.id_vendedor, cantidad, producto.precio, monto_total]
         );
 
-        // Actualizar stock
+        // Actualizar stock descontando la cantidad comprada
         await connection.query(
-        'UPDATE productos SET cantidad_disponible = cantidad_disponible - ? WHERE id_producto = ?',
-        [cantidad, id_producto]
+            'UPDATE productos SET cantidad_disponible = cantidad_disponible - ? WHERE id_producto = ?',
+            [cantidad, id_producto]
         );
 
         connection.release();
 
         res.status(201).json({
-        success: true,
-        message: 'Transacción creada',
-        id_transaccion: result.insertId
+            success: true,
+            message: 'Transacción creada',
+            id_transacciones: result.insertId
         });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
 };
 
-// Obtener transacciones del usuario
+// Obtener transacciones del usuario - CORREGIDO: Cambiado nombre por titulo
 const obtenerTransacciones = async (req, res) => {
     try {
         const id_usuario = req.user.id_usuario;
         const connection = await pool.getConnection();
 
         const [transacciones] = await connection.query(
-        'SELECT t.*, p.nombre, p.fotos FROM transacciones t JOIN productos p ON t.id_producto = p.id_producto WHERE t.id_comprador = ? AND t.eliminado = FALSE ORDER BY t.fecha_transaccion DESC',
-        [id_usuario]
+            'SELECT t.*, p.titulo, p.fotos FROM transacciones t JOIN productos p ON t.id_producto = p.id_producto WHERE t.id_comprador = ? ORDER BY t.fecha_transaccion DESC',
+            [id_usuario]
         );
 
         connection.release();
@@ -76,19 +77,18 @@ const actualizarEstadoTransaccion = async (req, res) => {
         const { estado_transaccion } = req.body;
 
         if (!['pendiente', 'completada', 'cancelada', 'devuelta'].includes(estado_transaccion)) {
-        return res.status(400).json({ success: false, message: 'Estado inválido' });
+            return res.status(400).json({ success: false, message: 'Estado inválido' });
         }
 
         const connection = await pool.getConnection();
 
-        // Verificar permisos (solo admin o dueño)
-        const [transacciones] = await connection.query('SELECT id_comprador FROM transacciones WHERE id_transaccion = ?', [id]);
+        const [transacciones] = await connection.query('SELECT id_comprador FROM transacciones WHERE id_transacciones = ?', [id]);
         if (transacciones.length === 0 || (transacciones[0].id_comprador !== req.user.id_usuario && req.user.tipo_usuario !== 'administrador')) {
-        connection.release();
-        return res.status(403).json({ success: false, message: 'No autorizado' });
+            connection.release();
+            return res.status(403).json({ success: false, message: 'No autorizado' });
         }
 
-        await connection.query('UPDATE transacciones SET estado_transaccion = ? WHERE id_transaccion = ?', [estado_transaccion, id]);
+        await connection.query('UPDATE transacciones SET estado_transaccion = ? WHERE id_transacciones = ?', [estado_transaccion, id]);
         connection.release();
 
         res.json({ success: true, message: 'Estado actualizado' });

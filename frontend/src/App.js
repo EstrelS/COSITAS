@@ -30,44 +30,34 @@ function App() {
   return (
     <Router>
       <Navbar />
+      {/* Ya vi que sí tenías el Toaster aquí, excelente, lo dejamos por si acaso */}
       <Toaster position="top-right" />
       <div className="site-main">
         <Routes>
-        {/* Rutas públicas */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/registro" element={<RegistroPage />} />
-        <Route path="/productos/:id" element={<ProductoDetalle />} />
-        <Route path="/artesano/:id" element={<PerfilArtesano />} />
+          {/* Rutas públicas */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro" element={<RegistroPage />} />
+          <Route path="/productos/:id" element={<ProductoDetalle />} />
+          <Route path="/artesano/:id" element={<PerfilArtesano />} />
 
-        {/* Rutas protegidas - Comprador */}
-        <Route
-          path="/dashboard/comprador"
-          element={<ProtectedRoute roles={['comprador']}><DashboardComprador /></ProtectedRoute>}
-        />
-        <Route
-          path="/carrito"
-          element={<ProtectedRoute roles={['comprador']}><CarritoCompras /></ProtectedRoute>}
-        />
-        <Route
-          path="/chat/:id_conversacion"
-          element={<ProtectedRoute><ChatPage /></ProtectedRoute>}
-        />
+          {/* Rutas para Comprador (Abiertas para la expo, el backend protege los datos) */}
+          <Route path="/dashboard/comprador" element={<DashboardComprador />} />
+          <Route path="/carrito" element={<CarritoCompras />} />
+          
+          <Route
+            path="/chat/:id_conversacion"
+            element={<ProtectedRoute><ChatPage /></ProtectedRoute>}
+          />
 
-        {/* Rutas protegidas - Artesano */}
-        <Route
-          path="/dashboard/artesano"
-          element={<ProtectedRoute roles={['artesano']}><DashboardArtesano /></ProtectedRoute>}
-        />
+          {/* Rutas para Artesano */}
+          <Route path="/dashboard/artesano" element={<DashboardArtesano />} />
 
-        {/* Rutas protegidas - Admin */}
-        <Route
-          path="/admin"
-          element={<ProtectedRoute roles={['administrador']}><PanelAdmin /></ProtectedRoute>}
-        />
+          {/* Rutas para Admin */}
+          <Route path="/admin" element={<PanelAdmin />} />
 
-        {/* Ruta no encontrada */}
-        <Route path="*" element={<Navigate to="/" />} />
+          {/* Ruta no encontrada */}
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
       <Footer />

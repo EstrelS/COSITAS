@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../config/axiosConfig';
 import authStore from '../store/authStore';
@@ -23,7 +22,9 @@ const LoginPage = () => {
 
       localStorage.setItem('token', response.data.token);
       setUsuario(response.data.usuario, response.data.token);
-      toast.success('¡Bienvenido!');
+      
+      // Alerta nativa que no rompe el flujo
+      alert('¡Bienvenido!');
 
       if (response.data.usuario.tipo_usuario === 'comprador') {
         navigate('/dashboard/comprador');
@@ -33,7 +34,9 @@ const LoginPage = () => {
         navigate('/admin');
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error al iniciar sesión');
+      console.error('Error completo en login:', err);
+      // Alerta nativa para ver el error real en pantalla
+      alert(err.response?.data?.message || 'Error al iniciar sesión. Verifica el backend.');
     } finally {
       setLoading(false);
     }

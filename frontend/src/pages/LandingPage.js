@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { FaSearch, FaStar } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import axiosInstance from '../config/axiosConfig';
-import BannerCarousel from '../components/BannerCarousel'; // IMPORTACIÓN NUEVA
+import BannerCarousel from '../components/BannerCarousel';
 
 const LandingPage = () => {
     const [productos, setProductos] = useState([]);
@@ -43,12 +43,28 @@ const LandingPage = () => {
         setBusqueda(e.target.value);
     };
 
+    const obtenerImagenUrl = (fotos) => {
+        if (!fotos) return '';
+        if (typeof fotos === 'string') {
+            if (fotos.startsWith('[') && fotos.endsWith(']')) {
+                try {
+                    const parseado = JSON.parse(fotos);
+                    return parseado[0] || '';
+                } catch (e) {
+                    return fotos;
+                }
+            }
+            return fotos;
+        }
+        if (Array.isArray(fotos)) {
+            return fotos[0] || '';
+        }
+        return '';
+    };
+
     return (
         <div className="landing-page">
-            {/* EL CARRUSEL NUEVO ARRIBA DE TODO */}
             <BannerCarousel />
-
-            {/* Hero Section */}
             <section className="hero">
                 <div className="hero-inner">
                     <h1>Descubre Artesanías Únicas</h1>
@@ -56,7 +72,6 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* Buscador */}
             <section className="search-section">
                 <div className="search-box">
                     <div className="search-box-inner">
@@ -92,9 +107,7 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* Sección Principal */}
             <section className="main-content">
-                {/* Filtros */}
                 <div className="filters-section">
                     <h2>Filtrar por categoría</h2>
                     <div className="filters-grid">
@@ -116,7 +129,6 @@ const LandingPage = () => {
                     </div>
                 </div>
 
-                {/* Grid de Productos */}
                 {loading ? (
                     <div className="loading-spinner">
                         <div className="spinner"></div>
@@ -134,12 +146,11 @@ const LandingPage = () => {
                                     className="product-card-link"
                                 >
                                     <div className="product-card">
-                                        {/* Imagen */}
                                         <div className="product-image-wrapper">
-                                            {producto.fotos && producto.fotos[0] ? (
+                                            {obtenerImagenUrl(producto.fotos) ? (
                                                 <img 
-                                                    src={JSON.parse(typeof producto.fotos === 'string' ? producto.fotos : '[""]')[0]} 
-                                                    alt={producto.nombre} 
+                                                    src={obtenerImagenUrl(producto.fotos)} 
+                                                    alt={producto.titulo} 
                                                     className="product-image"
                                                 />
                                             ) : (
@@ -149,16 +160,13 @@ const LandingPage = () => {
                                             )}
                                         </div>
 
-                                        {/* Contenido */}
                                         <div className="product-info">
                                             <h3 className="product-name">
-                                                {producto.nombre}
+                                                {producto.titulo}
                                             </h3>
                                             <p className="product-description">
                                                 {producto.descripcion}
                                             </p>
-
-                                            {/* Footer Card */}
                                             <div className="product-footer">
                                                 <span className="product-price">
                                                     ${producto.precio?.toLocaleString()}

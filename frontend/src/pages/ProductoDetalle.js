@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { FaComments, FaHeart, FaRegHeart, FaStar } from 'react-icons/fa';
+import { FaComments, FaHeart, FaRegHeart, FaShoppingCart, FaStar } from 'react-icons/fa';
 import { useParams } from 'react-router-dom';
 import axiosInstance from '../config/axiosConfig';
 import authStore from '../store/authStore';
@@ -68,6 +68,10 @@ const ProductoDetalle = () => {
     }
   };
 
+  const handleAgregarCarrito = () => {
+    toast.success('Producto añadido al carrito (Módulo en desarrollo)');
+  };
+
   const handleContactarArtesano = async () => {
     if (!isAuthenticated) {
       toast.error('Debes iniciar sesión');
@@ -75,7 +79,7 @@ const ProductoDetalle = () => {
     }
 
     try {
-      const response = await axiosInstance.post('/conversaciones', {
+      await axiosInstance.post('/conversaciones', {
         id_usuario_2: producto.id_vendedor,
         id_producto_relacionado: id
       });
@@ -98,7 +102,7 @@ const ProductoDetalle = () => {
         <div>
           <div className="bg-gray-200 h-96 rounded-lg overflow-hidden flex items-center justify-center">
             {fotos.length > 0 ? (
-              <img src={fotos[0]} alt={producto.nombre} className="w-full h-full object-cover" />
+              <img src={fotos[0]} alt={producto.titulo} className="w-full h-full object-cover" />
             ) : (
               <span className="text-gray-400">Sin imagen</span>
             )}
@@ -107,7 +111,7 @@ const ProductoDetalle = () => {
 
         {/* Detalles */}
         <div>
-          <h1 className="text-4xl font-bold mb-4">{producto.nombre}</h1>
+          <h1 className="text-4xl font-bold mb-4">{producto.titulo}</h1>
           
           <div className="flex items-center gap-4 mb-4">
             <div className="flex items-center gap-1">
@@ -138,23 +142,31 @@ const ProductoDetalle = () => {
               />
             </div>
 
-            <div className="flex gap-4">
-              <button
-                onClick={handleComprar}
-                className="flex-1 btn-primary"
-              >
-                Comprar Ahora
-              </button>
-              <button
-                onClick={handleAgregarFavorito}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg ${
-                  esReferencia
-                    ? 'bg-red-600 text-white hover:bg-red-700'
-                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                }`}
-              >
-                {esReferencia ? <FaHeart /> : <FaRegHeart />} Favorito
-              </button>
+            <div className="flex flex-col gap-2">
+                <button
+                    onClick={handleComprar}
+                    className="w-full btn-primary"
+                >
+                    Comprar Ahora
+                </button>
+                <div className="flex gap-4">
+                    <button
+                        onClick={handleAgregarCarrito}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-100 text-blue-800 hover:bg-blue-200"
+                    >
+                        <FaShoppingCart /> Añadir al Carrito
+                    </button>
+                    <button
+                        onClick={handleAgregarFavorito}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg ${
+                        esReferencia
+                            ? 'bg-red-600 text-white hover:bg-red-700'
+                            : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                        }`}
+                    >
+                        {esReferencia ? <FaHeart /> : <FaRegHeart />} Favorito
+                    </button>
+                </div>
             </div>
 
             <button

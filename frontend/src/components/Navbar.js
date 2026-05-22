@@ -14,6 +14,8 @@ const Navbar = () => {
         setShowDropdown(false);
     };
 
+    const rutaDashboard = usuario?.tipo_usuario === 'artesano' ? '/dashboard/artesano' : '/dashboard/comprador';
+
     return (
         <header>
             <div className="nav-wrapper">
@@ -54,8 +56,8 @@ const Navbar = () => {
                                     <FaChevronDown size={12} />
                                 </button>
                                 <div className="dropdown-menu">
-                                    <Link to="/perfil">Mi Perfil</Link>
-                                    <Link to="/mis-compras">Mis Compras</Link>
+                                    <Link to={rutaDashboard} onClick={() => setShowDropdown(false)}>Mi Perfil</Link>
+                                    <Link to={rutaDashboard} onClick={() => setShowDropdown(false)}>Mis Compras</Link>
                                     <button onClick={handleLogout}>Cerrar sesión</button>
                                 </div>
                             </div>
