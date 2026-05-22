@@ -14,7 +14,10 @@ const Navbar = () => {
         setShowDropdown(false);
     };
 
-    const rutaDashboard = usuario?.tipo_usuario === 'artesano' ? '/dashboard/artesano' : '/dashboard/comprador';
+    // Lógica para definir a dónde manda "Mi Perfil" dependiendo del tipo de usuario
+    let rutaDashboard = '/dashboard/comprador';
+    if (usuario?.tipo_usuario === 'artesano') rutaDashboard = '/dashboard/artesano';
+    if (usuario?.tipo_usuario === 'administrador') rutaDashboard = '/admin';
 
     return (
         <header>
@@ -27,10 +30,11 @@ const Navbar = () => {
                     </div>
                 </Link>
 
+                {/* Enlaces corregidos para que deslicen a las secciones en la misma página */}
                 <nav>
                     <a href="/">Inicio</a>
-                    <a href="/">Productos</a>
-                    <a href="/">Categorías</a>
+                    <a href="/#productos">Productos</a>
+                    <a href="/#categorias">Categorías</a>
                 </nav>
 
                 <div className="nav-right">
@@ -41,9 +45,11 @@ const Navbar = () => {
                         </>
                     ) : (
                         <>
-                            <Link to="/carrito" style={{ color: '#374151', fontSize: '1.25rem' }} title="Carrito">
-                                <FaShoppingCart />
-                            </Link>
+                            {usuario?.tipo_usuario !== 'administrador' && (
+                                 <Link to="/carrito" style={{ color: '#374151', fontSize: '1.25rem' }} title="Carrito">
+                                     <FaShoppingCart />
+                                 </Link>
+                            )}
                             <div className={`dropdown ${showDropdown ? 'open' : ''}`}>
                                 <button 
                                     onClick={() => setShowDropdown(!showDropdown)}

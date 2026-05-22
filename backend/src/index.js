@@ -25,6 +25,7 @@ app.use('/api/v1/auth', require('./routes/authRoutes'));
 app.use('/api/v1/usuarios', require('./routes/usuarioRoutes'));
 app.use('/api/v1/artesanos', require('./routes/artesanoRoutes'));
 app.use('/api/v1/productos', require('./routes/productoRoutes'));
+app.use('/api/v1/carrito', require('./routes/carritoRoutes'));
 app.use('/api/v1/categorias', require('./routes/categoriaRoutes'));
 app.use('/api/v1/transacciones', require('./routes/transaccionRoutes'));
 app.use('/api/v1/calificaciones', require('./routes/calificacionRoutes'));
