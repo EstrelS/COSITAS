@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../config/axiosConfig';
 import authStore from '../store/authStore';
+import CryptoJS from 'crypto-js'; // <-- PASO 1: Importamos CryptoJS
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -15,9 +16,14 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
+      // <-- PASO 2: Encriptamos la contraseña usando la clave secreta (CORREGIDO PARA CREATE REACT APP)
+      const claveSecreta = process.env.REACT_APP_AES_SECRET_KEY || 'MiClaveSecretaSuperSegura2026';
+      const passwordEncriptado = CryptoJS.AES.encrypt(password, claveSecreta).toString();
+
+      // <-- PASO 3: Enviamos la contraseña encriptada al backend
       const response = await axiosInstance.post('/auth/login', {
         email,
-        password
+        password: passwordEncriptado 
       });
 
       localStorage.setItem('token', response.data.token);

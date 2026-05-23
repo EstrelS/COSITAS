@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 const Joi = require('joi');
+const CryptoJS = require('crypto-js'); // <-- PASO 1: Importamos CryptoJS
 
 const registroSchema = Joi.object({
     nombre: Joi.string().required(),
@@ -30,8 +31,18 @@ const registro = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Email ya registrado' });
         }
 
-        // Hash del password
-        const password_hash = await bcrypt.hash(password, 10);
+        // <-- PASO 2: Desencriptar la contraseña que viene del frontend
+        const bytesRegistro = CryptoJS.AES.decrypt(password, process.env.AES_SECRET_KEY);
+        const passwordPlano = bytesRegistro.toString(CryptoJS.enc.Utf8);
+
+        // Validar que la desencriptación fue exitosa (evita que el servidor caiga si mandan texto plano por error)
+        if (!passwordPlano) {
+            connection.release();
+            return res.status(400).json({ success: false, message: 'Error de seguridad: La contraseña no está encriptada correctamente.' });
+        }
+
+        // Hash del password ya en texto plano
+        const password_hash = await bcrypt.hash(passwordPlano, 10);
 
         // Insertar usuario
         const [result] = await connection.query(
@@ -72,7 +83,17 @@ const login = async (req, res) => {
         const [users] = await connection.query('SELECT * FROM usuarios WHERE email = ? AND eliminado = FALSE', [email]);
         connection.release();
 
-        if (users.length === 0 || !(await bcrypt.compare(password, users[0].password_hash))) {
+        // <-- PASO 3: Desencriptar la contraseña que viene del frontend
+        const bytesLogin = CryptoJS.AES.decrypt(password, process.env.AES_SECRET_KEY);
+        const passwordPlano = bytesLogin.toString(CryptoJS.enc.Utf8);
+
+        // Validar que la desencriptación fue exitosa
+        if (!passwordPlano) {
+            return res.status(400).json({ success: false, message: 'Error de seguridad: Formato de contraseña inválido.' });
+        }
+
+        // Usar passwordPlano en lugar de password para comparar con el hash de la BD
+        if (users.length === 0 || !(await bcrypt.compare(passwordPlano, users[0].password_hash))) {
             return res.status(401).json({ success: false, message: 'Email o contraseña inválidos' });
         }
 
