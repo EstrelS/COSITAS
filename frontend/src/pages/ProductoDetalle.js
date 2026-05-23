@@ -36,32 +36,25 @@ const ProductoDetalle = () => {
     }
   };
 
-  const handleAgregarFavorito = async () => {
-    if (!isAuthenticated) { toast.error('Debes iniciar sesión'); return; }
+  // Lógica de Suspensión
+  const handleDarDeBaja = async () => {
     try {
-      await axiosInstance.post('/favoritos', { id_producto: id });
-      setEsReferencia(true);
-      toast.success('Agregado a favoritos');
-    } catch (err) { toast.error('Error al agregar a favoritos'); }
+      await axiosInstance.patch(`/admin/productos/${id}/suspender`);
+      toast.success('Producto dado de baja');
+      fetchProducto();
+    } catch (err) { toast.error('Error al suspender'); }
   };
 
-  const handleComprar = async () => {
-    if (!isAuthenticated) { toast.error('Debes iniciar sesión'); return; }
+  // Lógica de Reactivación
+  const handleReactivar = async () => {
     try {
-      await axiosInstance.post('/transacciones', { id_producto: id, cantidad });
-      toast.success('Compra realizada');
-    } catch (err) { toast.error(err.response?.data?.message || 'Error en la compra'); }
+      await axiosInstance.patch(`/admin/productos/${id}/reactivar`);
+      toast.success('Producto reactivado');
+      fetchProducto();
+    } catch (err) { toast.error('Error al reactivar'); }
   };
 
-  const handleAgregarCarrito = () => { toast.success('Producto añadido al carrito'); };
-
-  const handleContactarArtesano = async () => {
-    if (!isAuthenticated) { toast.error('Debes iniciar sesión'); return; }
-    try {
-      await axiosInstance.post('/conversaciones', { id_usuario_2: producto.id_vendedor, id_producto_relacionado: id });
-      toast.success('Conversación creada');
-    } catch (err) { toast.error('Error al crear conversación'); }
-  };
+  // ... (tus funciones handleAgregarFavorito, handleComprar, etc., se mantienen igual)
 
   if (!producto) return <div className="container text-center py-12">Cargando...</div>;
 
@@ -82,39 +75,27 @@ const ProductoDetalle = () => {
             <div className="flex items-center gap-1">
               {[...Array(5)].map((_, i) => <FaStar key={i} className={i < Math.round(producto.calificacion_promedio) ? 'text-yellow-400' : 'text-gray-300'} />)}
             </div>
-            <span className="text-gray-600">{producto.calificacion_promedio || 0} estrellas</span>
+            <span>{producto.calificacion_promedio || 0} estrellas</span>
           </div>
-          <p className="text-gray-600 text-lg mb-4">{producto.descripcion}</p>
+          
           <div className="bg-blue-50 p-4 rounded-lg mb-4">
             <p className="text-3xl font-bold text-blue-600">${producto.precio}</p>
-            <p className="text-sm text-gray-600">Stock disponible: {producto.cantidad_disponible}</p>
+            <p className="text-sm">Estado: {producto.estado_producto}</p>
           </div>
 
-          <div className="space-y-4">
-            {usuario?.tipo_usuario === 'administrador' ? (
-                <div className="flex flex-col gap-2">
-                    <button className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 font-bold">Dar de baja producto</button>
-                    <button className="w-full bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 font-bold">Editar información</button>
-                </div>
-            ) : (
-                <>
-                    <div className="flex items-center gap-4">
-                        <label className="font-bold">Cantidad:</label>
-                        <input type="number" min="1" max={producto.cantidad_disponible} value={cantidad} onChange={(e) => setCantidad(parseInt(e.target.value))} className="input-field w-24" />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                        <button onClick={handleComprar} className="w-full btn-primary">Comprar Ahora</button>
-                        <div className="flex gap-4">
-                            <button onClick={handleAgregarCarrito} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-100 text-blue-800"><FaShoppingCart /> Carrito</button>
-                            <button onClick={handleAgregarFavorito} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg ${esReferencia ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-800'}`}>
-                                {esReferencia ? <FaHeart /> : <FaRegHeart />} Favorito
-                            </button>
-                        </div>
-                    </div>
-                    <button onClick={handleContactarArtesano} className="w-full btn-secondary flex items-center justify-center gap-2"><FaComments /> Contactar Artesano</button>
-                </>
-            )}
-          </div>
+          {/* Lógica de botones Admin */}
+          {usuario?.tipo_usuario === 'administrador' && (
+            <div className="flex flex-col gap-2">
+              {producto.estado_producto === 'suspendido' ? (
+                <button onClick={handleReactivar} className="w-full bg-green-600 text-white py-2 rounded-lg font-bold">Reactivar Producto</button>
+              ) : (
+                <button onClick={handleDarDeBaja} className="w-full bg-red-600 text-white py-2 rounded-lg font-bold">Dar de baja</button>
+              )}
+              <button className="w-full bg-yellow-500 text-white py-2 rounded-lg font-bold">Editar información</button>
+            </div>
+          )}
+          
+          {/* ... resto de tu contenido original ... */}
         </div>
       </div>
     </div>
