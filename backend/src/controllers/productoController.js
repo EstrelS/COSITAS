@@ -95,34 +95,54 @@ const crearProducto = async (req, res) => {
 };
 
 const obtenerProductos = async (req, res) => {
+    let connection;
     try {
         const { categoria, busqueda, vendedor } = req.query;
-        const connection = await pool.getConnection();
-        let query = 'SELECT * FROM productos WHERE estado_producto = "activo"';
+        connection = await pool.getConnection();
+        let query = `
+            SELECT p.*, 
+                   (SELECT COALESCE(AVG(c.puntiacion), 0) 
+                    FROM calificaciones c 
+                    JOIN transacciones t ON c.id_transaccion = t.id_transacciones 
+                    WHERE t.id_producto = p.id_producto) AS calificacion_promedio
+            FROM productos p 
+            WHERE p.estado_producto = "activo"
+        `;
         const params = [];
-        if (categoria) { query += ' AND id_categoria = ?'; params.push(categoria); }
-        if (busqueda) { query += ' AND titulo LIKE ?'; params.push(`%${busqueda}%`); }
-        if (vendedor) { query += ' AND id_vendedor = ?'; params.push(vendedor); }
+        if (categoria) { query += ' AND p.id_categoria = ?'; params.push(categoria); }
+        if (busqueda) { query += ' AND p.titulo LIKE ?'; params.push(`%${busqueda}%`); }
+        if (vendedor) { query += ' AND p.id_vendedor = ?'; params.push(vendedor); }
         const [productos] = await connection.query(query, params);
-        connection.release();
         res.json({ success: true, productos });
     } catch (err) { 
         console.error("Error en obtenerProductos:", err);
         res.status(500).json({ success: false, message: err.message }); 
+    } finally {
+        if (connection) connection.release();
     }
 };
 
 const obtenerProductoId = async (req, res) => {
+    let connection;
     try {
         const { id } = req.params;
-        const connection = await pool.getConnection();
-        const [productos] = await connection.query('SELECT * FROM productos WHERE id_producto = ?', [id]);
-        connection.release();
+        connection = await pool.getConnection();
+        const [productos] = await connection.query(`
+            SELECT p.*, 
+                   (SELECT COALESCE(AVG(c.puntiacion), 0) 
+                    FROM calificaciones c 
+                    JOIN transacciones t ON c.id_transaccion = t.id_transacciones 
+                    WHERE t.id_producto = p.id_producto) AS calificacion_promedio
+            FROM productos p 
+            WHERE p.id_producto = ?
+        `, [id]);
         if (productos.length === 0) return res.status(404).json({ success: false, message: 'Producto no encontrado' });
         res.json({ success: true, producto: productos[0] });
     } catch (err) { 
         console.error("Error en obtenerProductoId:", err);
         res.status(500).json({ success: false, message: err.message }); 
+    } finally {
+        if (connection) connection.release();
     }
 };
 

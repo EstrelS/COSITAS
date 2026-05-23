@@ -174,7 +174,7 @@ const LandingPage = () => {
                                                 <div className="product-rating">
                                                     <FaStar className="rating-star" />
                                                     <span>
-                                                        {producto.calificacion_promedio || 'N/A'}
+                                                        {producto.calificacion_promedio ? Number(producto.calificacion_promedio).toFixed(1) : 'N/A'}
                                                     </span>
                                                 </div>
                                             </div>
