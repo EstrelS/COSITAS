@@ -30,10 +30,12 @@ const crearConversacion = async (req, res) => {
     }
 };
 
-const obtenerConversaciones = async (req, res) => {
+const obtenerConversaciones = async (req, res) => { 
     try {
-        const id_usuario = req.user.id_usuario;
-        const connection = await pool.getConnection();
+        if (!req.user || !req.user.id_usuario) {
+            return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+        }
+        
 
         const [conversaciones] = await connection.query(
         'SELECT * FROM conversaciones WHERE (id_usuario_1 = ? OR id_usuario_2 = ?) AND eliminado = FALSE ORDER BY fecha_ultima_actualizacion DESC',

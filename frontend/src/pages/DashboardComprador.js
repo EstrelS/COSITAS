@@ -13,6 +13,8 @@ const DashboardComprador = () => {
   }, []);
 
   const fetchData = async () => {
+    const token = localStorage.getItem('token');
+
     // 1. Pedimos las compras por separado (Si falla lo demás, esto sí carga)
     try {
       const transRes = await axiosInstance.get('/transacciones');
@@ -29,12 +31,14 @@ const DashboardComprador = () => {
       console.error('Error al cargar favoritos:', err);
     }
 
-    // 3. Pedimos los chats
-    try {
-      const convRes = await axiosInstance.get('/conversaciones');
-      setConversaciones(convRes.data.conversaciones || []);
-    } catch (err) {
-      console.error('Error al cargar chats:', err);
+    // 3. Pedimos los chats solo si está autenticado
+    if (token) {
+      try {
+        const convRes = await axiosInstance.get('/conversaciones');
+        setConversaciones(convRes.data.conversaciones || []);
+      } catch (err) {
+        console.error('Error al cargar chats:', err);
+      }
     }
 
     setLoading(false);
