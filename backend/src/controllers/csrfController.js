@@ -25,8 +25,7 @@ const validarCSRFToken = (token) => {
     if (!token || !validTokens.has(token)) {
         return false;
     }
-    // Usar token una sola vez
-    validTokens.delete(token);
+    // En una aplicación con React, el token debe durar toda la sesión, no borrarse en cada uso.
     return true;
 };
 

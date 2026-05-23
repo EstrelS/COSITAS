@@ -4,7 +4,7 @@ const Joi = require('joi');
 const calificacionSchema = Joi.object({
     id_transaccion: Joi.number().integer().required(),
     calificacion: Joi.number().integer().min(1).max(5).required(),
-    comentario: Joi.string().max(1000)
+    comentario: Joi.string().allow('').max(1000)
 });
 
 const crearCalificacion = async (req, res) => {
@@ -35,6 +35,9 @@ const crearCalificacion = async (req, res) => {
         id_calificacion: result.insertId
         });
     } catch (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ success: false, message: 'Ya has calificado esta compra anteriormente.' });
+        }
         res.status(500).json({ success: false, message: err.message });
     } finally {
         if (connection) connection.release();
@@ -53,6 +56,7 @@ const obtenerCalificacionesProducto = async (req, res) => {
         JOIN transacciones t ON c.id_transaccion = t.id_transacciones
         JOIN usuarios u ON c.id_calificador = u.id_usuario
         WHERE t.id_producto = ?
+        ORDER BY c.id_calificacion DESC
         `, [id_producto]);
 
 

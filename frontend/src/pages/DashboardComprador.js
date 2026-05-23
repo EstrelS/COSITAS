@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FaBox, FaComments, FaHeart, FaTrash } from 'react-icons/fa';
+import { FaBox, FaComments, FaHeart, FaTrash, FaStar } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axiosInstance from '../config/axiosConfig';
@@ -10,6 +10,12 @@ const DashboardComprador = () => {
   const [conversaciones, setConversaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [procesandoFavorito, setProcesandoFavorito] = useState(null);
+
+  // Estados para el Modal de Reseñas
+  const [modalResena, setModalResena] = useState(false);
+  const [transaccionSeleccionada, setTransaccionSeleccionada] = useState(null);
+  const [formResena, setFormResena] = useState({ calificacion: 5, comentario: '' });
+  const [enviandoResena, setEnviandoResena] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -58,6 +64,36 @@ const DashboardComprador = () => {
       toast.error('Error al eliminar de favoritos');
     } finally {
       setProcesandoFavorito(null);
+    }
+  };
+
+  const abrirModalResena = (trans) => {
+    setTransaccionSeleccionada(trans);
+    setFormResena({ calificacion: 5, comentario: '' });
+    setModalResena(true);
+  };
+
+  const enviarResena = async (e) => {
+    e.preventDefault();
+    if (!formResena.comentario.trim()) {
+      toast.error('Por favor escribe tu opinión antes de publicar.');
+      return;
+    }
+    setEnviandoResena(true);
+    try {
+      await axiosInstance.post('/calificaciones', {
+        id_transaccion: transaccionSeleccionada.id_transacciones,
+        calificacion: Number(formResena.calificacion),
+        comentario: formResena.comentario
+      });
+      toast.success('¡Reseña publicada con éxito! Aparecerá en el producto.');
+      setModalResena(false);
+      fetchData(); // Recargamos para actualizar el estado del botón
+    } catch (err) {
+      const errorMsg = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Error al publicar la reseña';
+      toast.error(errorMsg);
+    } finally {
+      setEnviandoResena(false);
     }
   };
 
@@ -122,12 +158,17 @@ const DashboardComprador = () => {
                 <th className="text-left p-4">Monto</th>
                 <th className="text-left p-4">Estado</th>
                 <th className="text-left p-4">Fecha</th>
+                <th className="text-center p-4">Acción</th>
               </tr>
             </thead>
             <tbody>
               {transacciones.slice(0, 5).map((trans) => (
                 <tr key={trans.id_transacciones} className="border-b hover:bg-gray-50">
-                  <td className="p-4">{trans.titulo}</td>
+                  <td className="p-4">
+                    <Link to={`/productos/${trans.id_producto}`} className="text-blue-600 font-bold hover:underline">
+                      {trans.titulo}
+                    </Link>
+                  </td>
                   <td className="p-4">${trans.monto_total}</td>
                   <td className="p-4">
                     <span className={`px-3 py-1 rounded-full text-sm font-bold ${
@@ -139,6 +180,15 @@ const DashboardComprador = () => {
                     </span>
                   </td>
                   <td className="p-4">{new Date(trans.fecha_transaccion).toLocaleDateString()}</td>
+                  <td className="p-4 text-center">
+                    {trans.ya_calificado > 0 ? (
+                      <span className="text-gray-500 font-bold text-sm bg-gray-100 px-3 py-1 rounded-full inline-block">Calificado ✓</span>
+                    ) : (
+                      <button onClick={() => abrirModalResena(trans)} className="bg-yellow-400 text-white px-3 py-1 rounded shadow text-sm font-bold hover:bg-yellow-500 transition-colors flex items-center justify-center gap-1 mx-auto">
+                        <FaStar /> Calificar
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -176,6 +226,42 @@ const DashboardComprador = () => {
           </div>
         )}
       </div>
+
+      {/* Modal para Calificar */}
+      {modalResena && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-bold mb-4 border-b pb-2">Calificar Producto</h2>
+            <p className="mb-4 text-gray-600">¿Qué te pareció <b>{transaccionSeleccionada?.titulo}</b>?</p>
+            <form onSubmit={enviarResena} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold mb-1">Estrellas</label>
+                <select 
+                  value={formResena.calificacion} 
+                  onChange={(e) => setFormResena({...formResena, calificacion: e.target.value})}
+                  className="w-full border rounded px-3 py-2 bg-gray-50 focus:bg-white"
+                >
+                  <option value="5">⭐⭐⭐⭐⭐ (5) Excelente</option>
+                  <option value="4">⭐⭐⭐⭐ (4) Muy Bueno</option>
+                  <option value="3">⭐⭐⭐ (3) Bueno</option>
+                  <option value="2">⭐⭐ (2) Regular</option>
+                  <option value="1">⭐ (1) Malo</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-1">Tu reseña</label>
+                <textarea required placeholder="Escribe tu opinión sobre el producto..." value={formResena.comentario} onChange={(e) => setFormResena({...formResena, comentario: e.target.value})} className="w-full border rounded px-3 py-2 bg-gray-50 focus:bg-white" rows="4"></textarea>
+              </div>
+              <div className="flex gap-2 mt-6 pt-4 border-t">
+                <button type="button" onClick={() => setModalResena(false)} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-colors">Cancelar</button>
+                <button type="submit" disabled={enviandoResena} className="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-2 rounded-xl font-bold hover:from-yellow-500 hover:to-yellow-600 shadow-md disabled:opacity-50 transition-all">
+                  {enviandoResena ? 'Enviando...' : 'Publicar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

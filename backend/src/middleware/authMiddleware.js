@@ -14,7 +14,7 @@ const verifyToken = (req, res, next) => {
         req.user = decoded; // Aquí se guarda el objeto del usuario (incluyendo tipo_usuario)
         next();
     } catch (err) {
-        return res.status(403).json({ success: false, message: 'Token inválido o expirado' });
+        return res.status(401).json({ success: false, message: 'Token JWT inválido o expirado' });
     }
 };
 

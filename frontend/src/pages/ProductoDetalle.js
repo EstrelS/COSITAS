@@ -21,6 +21,7 @@ const ProductoDetalle = () => {
   const [comprando, setComprando] = useState(false);
   const [agregandoFavorito, setAgregandoFavorito] = useState(false);
   const [iniciandoChat, setIniciandoChat] = useState(false);
+  const [mostrarPagoModal, setMostrarPagoModal] = useState(false);
 
   const { usuario, isAuthenticated } = authStore();
 
@@ -146,7 +147,8 @@ const ProductoDetalle = () => {
   };
 
   // ✅ CORREGIDO: Realizar compra — bloquea mientras procesa
-  const handleComprar = async () => {
+  const handleComprar = async (e) => {
+    e.preventDefault();
     if (!isAuthenticated) {
       toast.error('Debes iniciar sesión');
       return;
@@ -155,7 +157,8 @@ const ProductoDetalle = () => {
     setComprando(true);
     try {
       await axiosInstance.post('/transacciones', { id_producto: id, cantidad });
-      toast.success('Compra realizada');
+      toast.success('¡Pago exitoso! Compra realizada.');
+      setMostrarPagoModal(false);
       fetchProducto();
     } catch (err) {
       toast.error('Error al realizar compra');
@@ -302,11 +305,11 @@ const ProductoDetalle = () => {
 
               {/* ✅ disabled mientras compra */}
               <button
-                onClick={handleComprar}
+                onClick={() => setMostrarPagoModal(true)}
                 disabled={comprando}
                 className="w-full bg-gradient-to-r from-pink-600 via-red-500 to-orange-500 text-white py-4 rounded-2xl font-bold hover:from-pink-700 hover:via-red-600 hover:to-orange-600 text-lg transition-all duration-300 shadow-md hover:shadow-lg hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {comprando ? 'Procesando...' : 'Comprar Ahora'}
+                Comprar Ahora
               </button>
 
               <div className="flex gap-2">
@@ -339,6 +342,16 @@ const ProductoDetalle = () => {
               <div className="space-y-4">
                 {calificaciones.map(cal => (
                   <div key={cal.id_calificacion} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <div className="flex items-center gap-3 mb-3">
+                      {cal.foto_perfil_url ? (
+                        <img src={cal.foto_perfil_url} alt={cal.nombre} className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                          {cal.nombre?.charAt(0) || 'U'}
+                        </div>
+                      )}
+                      <span className="font-bold text-gray-800">{cal.nombre}</span>
+                    </div>
                     <div className="flex gap-1 mb-2">
                       {[...Array(5)].map((_, i) => (
                         <FaStar key={i} className={i < cal.calificacion ? 'text-yellow-400' : 'text-gray-300'} />
@@ -413,6 +426,45 @@ const ProductoDetalle = () => {
                 {editando ? 'Guardando...' : 'Guardar'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL DE PAGO (CHECKOUT) --- */}
+      {mostrarPagoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-bold mb-4 border-b pb-2">Finalizar Compra</h2>
+            <form onSubmit={handleComprar} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold mb-1">Nombre en la Tarjeta</label>
+                <input required type="text" placeholder="Ej. Juan Pérez" className="w-full border rounded px-3 py-2 bg-gray-50 focus:bg-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-1">Dirección de Envío</label>
+                <input required type="text" placeholder="Calle, Número, Ciudad, Estado..." className="w-full border rounded px-3 py-2 bg-gray-50 focus:bg-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-1">Número de Tarjeta</label>
+                <input required type="text" placeholder="0000 0000 0000 0000" maxLength="16" pattern="\d*" title="Solo 16 números" className="w-full border rounded px-3 py-2 bg-gray-50 focus:bg-white" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold mb-1">Vencimiento</label>
+                  <input required type="text" placeholder="MM/AA" maxLength="5" className="w-full border rounded px-3 py-2 bg-gray-50 focus:bg-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1">CVV</label>
+                  <input required type="password" placeholder="123" maxLength="4" className="w-full border rounded px-3 py-2 bg-gray-50 focus:bg-white" />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-6 pt-4 border-t">
+                <button type="button" onClick={() => setMostrarPagoModal(false)} className="flex-1 border-2 border-gray-300 py-3 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-colors">Cancelar</button>
+                <button type="submit" disabled={comprando} className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-bold hover:from-green-600 hover:to-green-700 shadow-md disabled:opacity-50 transition-all duration-300">
+                  {comprando ? 'Procesando...' : `Pagar $${(producto.precio * cantidad).toFixed(2)}`}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
