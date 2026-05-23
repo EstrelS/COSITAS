@@ -1,4 +1,4 @@
-import create from 'zustand';
+import { create } from 'zustand';
 
 const authStore = create((set) => ({
     usuario: null,
@@ -19,12 +19,18 @@ const authStore = create((set) => ({
     checkAuth: () => {
         const token = localStorage.getItem('token');
         if (token) {
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            set({ token, isAuthenticated: true });
-        } catch (e) {
-            localStorage.removeItem('token');
-        }
+            try {
+                // Decodificamos el token para recuperar el rol y usuario
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                set({ 
+                    token, 
+                    isAuthenticated: true,
+                    usuario: payload // Aseguramos que el usuario esté en el store
+                });
+            } catch (e) {
+                localStorage.removeItem('token');
+                set({ usuario: null, token: null, isAuthenticated: false });
+            }
         }
     }
 }));
