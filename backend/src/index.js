@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
 const path = require('path');
+const { csrfMiddleware } = require('./middleware/csrfMiddleware');
 
 dotenv.config();
 
@@ -20,7 +21,11 @@ app.use(express.json());
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// ============== MIDDLEWARE CSRF ==============
+app.use(csrfMiddleware);
+
 // ============== RUTAS ==============
+app.use('/api/v1/csrf', require('./routes/csrfRoutes'));
 app.use('/api/v1/auth', require('./routes/authRoutes'));
 app.use('/api/v1/usuarios', require('./routes/usuarioRoutes'));
 app.use('/api/v1/artesanos', require('./routes/artesanoRoutes'));
