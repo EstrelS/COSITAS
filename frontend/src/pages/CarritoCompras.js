@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react';
-import axios from '../config/axiosConfig';
+import axiosInstance from '../config/axiosConfig';
 import toast from 'react-hot-toast';
 import { FaMinus, FaPlus, FaTrash } from 'react-icons/fa';
 
 const CarritoCompras = () => {
   const [carrito, setCarrito] = useState([]);
-  const id_usuario = localStorage.getItem('id_usuario');
 
   const cargarCarrito = async () => {
-    if (!id_usuario) return;
     try {
-      const res = await axios.get(`/carrito?id_usuario=${id_usuario}`);
+      const res = await axiosInstance.get('/carrito');
       setCarrito(res.data.carrito || []);
     } catch (err) {
       toast.error('Error al cargar el carrito');
@@ -19,7 +17,7 @@ const CarritoCompras = () => {
 
   useEffect(() => {
     cargarCarrito();
-  }, [id_usuario]);
+  }, []);
 
   const actualizarCantidad = async (id_producto, nueva_cantidad) => {
     if (nueva_cantidad <= 0) {
@@ -27,7 +25,8 @@ const CarritoCompras = () => {
       return;
     }
     try {
-      await axios.post('/carrito', { id_usuario, id_producto, cantidad: nueva_cantidad - (carrito.find(i=>i.id_producto === id_producto)?.cantidad || 0) });
+      const cantidadActual = carrito.find(i => i.id_producto === id_producto)?.cantidad || 0;
+      await axiosInstance.post('/carrito', { id_producto, cantidad: nueva_cantidad - cantidadActual });
       cargarCarrito();
     } catch (err) {
       toast.error('Error al actualizar');
@@ -36,7 +35,7 @@ const CarritoCompras = () => {
 
   const eliminarDelCarrito = async (id_producto) => {
     try {
-      await axios.delete(`/carrito?id_usuario=${id_usuario}&id_producto=${id_producto}`);
+      await axiosInstance.delete(`/carrito/${id_producto}`);
       cargarCarrito();
       toast.success('Producto removido');
     } catch (err) {

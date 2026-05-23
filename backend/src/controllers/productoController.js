@@ -10,11 +10,76 @@ const productoSchema = Joi.object({
     fotos: Joi.array().items(Joi.string())
 });
 
+// Lista de palabras prohibidas (contenido malo)
+const palabrasProhibidas = [
+    'fraude', 'estafa', 'engaño', 'robo', 'droga', 'arma', 'ilegal',
+    'violencia', 'odio', 'discriminación', 'racismo', 'porno', 'obsceno'
+];
+
+// Función para validar que el precio sea en pesos (no dólares)
+const validarPrecio = (precio, precioStr = '') => {
+    // Si precio contiene símbolos de dólar o menciona USD
+    const precioTexto = precioStr.toString().toUpperCase();
+    if (precioTexto.includes('$') || precioTexto.includes('USD') || precioTexto.includes('DOLAR')) {
+        return { valido: false, error: 'El precio debe estar en pesos COP, no en dólares' };
+    }
+    if (precio <= 0) {
+        return { valido: false, error: 'El precio debe ser mayor a 0' };
+    }
+    return { valido: true };
+};
+
+// Función para validar contenido apropiado
+const validarContenidoApropiado = (texto) => {
+    const textoLower = texto.toLowerCase().trim();
+    
+    for (let palabra of palabrasProhibidas) {
+        if (textoLower.includes(palabra)) {
+            return { 
+                valido: false, 
+                error: `Contenido no permitido detectado: "${palabra}". Por favor revisa el contenido del producto` 
+            };
+        }
+    }
+    
+    return { valido: true };
+};
+
 const crearProducto = async (req, res) => {
     try {
         const { error, value } = productoSchema.validate(req.body);
         if (error) return res.status(400).json({ success: false, errors: error.details.map(d => d.message) });
         const { titulo, precio, cantidad_disponible, descripcion, id_categoria, fotos } = value;
+        
+        // Validar precio (detectar dólares)
+        const validacionPrecio = validarPrecio(precio);
+        if (!validacionPrecio.valido) {
+            return res.status(400).json({ 
+                success: false, 
+                errors: [validacionPrecio.error] 
+            });
+        }
+
+        // Validar contenido apropiado en título
+        const validacionTitulo = validarContenidoApropiado(titulo);
+        if (!validacionTitulo.valido) {
+            return res.status(400).json({ 
+                success: false, 
+                errors: [validacionTitulo.error] 
+            });
+        }
+
+        // Validar contenido apropiado en descripción
+        if (descripcion && descripcion.trim().length > 0) {
+            const validacionDescripcion = validarContenidoApropiado(descripcion);
+            if (!validacionDescripcion.valido) {
+                return res.status(400).json({ 
+                    success: false, 
+                    errors: [validacionDescripcion.error] 
+                });
+            }
+        }
+
         const id_vendedor = req.user.id_usuario;
         const connection = await pool.getConnection();
         const [result] = await connection.query(
@@ -65,11 +130,74 @@ const actualizarProducto = async (req, res) => {
     try {
         const { id } = req.params;
         const { titulo, precio, descripcion } = req.body;
+
+        // Validar que al menos UN campo esté siendo actualizado
+        if (titulo === undefined && precio === undefined && descripcion === undefined) {
+            return res.status(400).json({ 
+                success: false, 
+                errors: ['Debes modificar al menos un campo'] 
+            });
+        }
+
+        // Si viene precio, validarlo
+        if (precio !== undefined && precio !== '') {
+            const validacionPrecio = validarPrecio(precio);
+            if (!validacionPrecio.valido) {
+                return res.status(400).json({ 
+                    success: false, 
+                    errors: [validacionPrecio.error] 
+                });
+            }
+        }
+
+        // Si viene título, validarlo
+        if (titulo !== undefined && titulo.trim() !== '') {
+            const validacionTitulo = validarContenidoApropiado(titulo);
+            if (!validacionTitulo.valido) {
+                return res.status(400).json({ 
+                    success: false, 
+                    errors: [validacionTitulo.error] 
+                });
+            }
+        }
+
+        // Si viene descripción, validarla
+        if (descripcion !== undefined && descripcion.trim() !== '') {
+            const validacionDescripcion = validarContenidoApropiado(descripcion);
+            if (!validacionDescripcion.valido) {
+                return res.status(400).json({ 
+                    success: false, 
+                    errors: [validacionDescripcion.error] 
+                });
+            }
+        }
+
+        // Construir la query dinámicamente solo con los campos que vienen
+        let updateQuery = 'UPDATE productos SET ';
+        const updateValues = [];
+
+        if (titulo !== undefined && titulo.trim() !== '') {
+            updateQuery += 'titulo = ?, ';
+            updateValues.push(titulo);
+        }
+
+        if (precio !== undefined && precio !== '') {
+            updateQuery += 'precio = ?, ';
+            updateValues.push(precio);
+        }
+
+        if (descripcion !== undefined) {
+            updateQuery += 'descripcion = ?, ';
+            updateValues.push(descripcion);
+        }
+
+        // Remover la última coma y espacio
+        updateQuery = updateQuery.slice(0, -2);
+        updateQuery += ' WHERE id_producto = ?';
+        updateValues.push(id);
+
         const connection = await pool.getConnection();
-        await connection.query(
-            'UPDATE productos SET titulo = ?, precio = ?, descripcion = ? WHERE id_producto = ?',
-            [titulo, precio, descripcion, id]
-        );
+        await connection.query(updateQuery, updateValues);
         connection.release();
         res.json({ success: true, message: 'Producto actualizado exitosamente' });
     } catch (err) { 
