@@ -22,6 +22,13 @@ const authStore = create((set) => ({
             try {
                 // Decodificamos el token para recuperar el rol y usuario
                 const payload = JSON.parse(atob(token.split('.')[1]));
+                
+                // Verificar si el token ya expiró
+                const tokenExpirado = payload.exp && (payload.exp * 1000 < Date.now());
+                if (tokenExpirado) {
+                    throw new Error("Token expirado");
+                }
+                
                 set({ 
                     token, 
                     isAuthenticated: true,

@@ -7,11 +7,13 @@ import toast from 'react-hot-toast';
 const PanelAdmin = () => {
   const [stats, setStats] = useState(null);
   const [reportes, setReportes] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDashboard();
     fetchReportes();
+    fetchUsuarios();
   }, []);
 
   const fetchDashboard = async () => {
@@ -28,11 +30,27 @@ const PanelAdmin = () => {
     } catch (err) { console.error('Error reportes:', err); }
   };
 
+  const fetchUsuarios = async () => {
+    try {
+      const response = await axiosInstance.get('/auth/usuarios');
+      setUsuarios(response.data.usuarios || []);
+    } catch (err) { console.error('Error usuarios:', err); }
+  };
+
   const handleResolverReporte = async (id, estado) => {
     try {
       await axiosInstance.patch(`/admin/reportes/${id}/resolver`, { estado });
       fetchReportes();
     } catch (err) { toast.error('Error al resolver'); }
+  };
+
+  const handleSuspenderUsuario = async (id) => {
+    if (!window.confirm('¿Estás seguro de suspender a este usuario? Ya no podrá iniciar sesión.')) return;
+    try {
+      await axiosInstance.patch(`/admin/usuarios/${id}/suspender`);
+      toast.success('Usuario suspendido exitosamente');
+      fetchUsuarios();
+    } catch (err) { toast.error('Error al suspender'); }
   };
 
   if (loading) return <div className="container text-center py-12">Cargando...</div>;
@@ -71,6 +89,49 @@ const PanelAdmin = () => {
           >
             Ver productos desactivados
           </Link>
+        </div>
+      </div>
+
+      {/* Gestión de Usuarios */}
+      <div className="card p-6 mt-8 mb-8">
+        <h2 className="text-2xl font-bold mb-6">Gestión de Usuarios</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b">
+                <th className="p-3">ID</th>
+                <th className="p-3">Nombre</th>
+                <th className="p-3">Email</th>
+                <th className="p-3">Rol</th>
+                <th className="p-3">Estado</th>
+                <th className="p-3">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usuarios.map(u => (
+                <tr key={u.id_usuario} className="border-b hover:bg-gray-50">
+                  <td className="p-3 text-gray-500">#{u.id_usuario}</td>
+                  <td className="p-3 font-bold">{u.nombre}</td>
+                  <td className="p-3">{u.email}</td>
+                  <td className="p-3 capitalize">{u.tipo_usuario}</td>
+                  <td className="p-3">
+                    {u.eliminado ? (
+                      <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">Suspendido</span>
+                    ) : (
+                      <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Activo</span>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    {!u.eliminado && u.tipo_usuario !== 'administrador' && (
+                      <button onClick={() => handleSuspenderUsuario(u.id_usuario)} className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 font-bold transition">
+                        Suspender
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { FaComments, FaHeart, FaRegHeart, FaShoppingCart, FaStar } from 'react-icons/fa';
-import { useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import axiosInstance from '../config/axiosConfig';
 import authStore from '../store/authStore';
 
 const ProductoDetalle = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [producto, setProducto] = useState(null);
   const [calificaciones, setCalificaciones] = useState([]);
   const [esReferencia, setEsReferencia] = useState(false);
@@ -19,6 +20,7 @@ const ProductoDetalle = () => {
   const [agregandoCarrito, setAgregandoCarrito] = useState(false);
   const [comprando, setComprando] = useState(false);
   const [agregandoFavorito, setAgregandoFavorito] = useState(false);
+  const [iniciandoChat, setIniciandoChat] = useState(false);
 
   const { usuario, isAuthenticated } = authStore();
 
@@ -53,7 +55,11 @@ const ProductoDetalle = () => {
   // Lógica de Suspensión
   const handleDarDeBaja = async () => {
     try {
-      await axiosInstance.patch(`/admin/productos/${id}/suspender`);
+      if (usuario.tipo_usuario === 'administrador') {
+        await axiosInstance.patch(`/admin/productos/${id}/suspender`);
+      } else {
+        await axiosInstance.patch(`/productos/${id}/pausar`);
+      }
       toast.success('Producto dado de baja');
       fetchProducto();
     } catch (err) { toast.error('Error al suspender'); }
@@ -86,7 +92,11 @@ const ProductoDetalle = () => {
       if (tieneValorPrecio) datosActualizar.precio = parseFloat(formEditar.precio);
       if (tieneValorDescripcion) datosActualizar.descripcion = formEditar.descripcion;
 
-      await axiosInstance.patch(`/admin/productos/${id}/editar`, datosActualizar);
+      if (usuario.tipo_usuario === 'administrador') {
+        await axiosInstance.patch(`/admin/productos/${id}/editar`, datosActualizar);
+      } else {
+        await axiosInstance.put(`/productos/${id}`, datosActualizar);
+      }
       toast.success('Producto actualizado correctamente');
       setMostrarEditarModal(false);
       fetchProducto();
@@ -154,12 +164,34 @@ const ProductoDetalle = () => {
     }
   };
 
+  // ✅ NUEVO: Lógica para crear y redirigir al chat
+  const handleCrearChat = async () => {
+    if (!isAuthenticated) {
+      toast.error('Debes iniciar sesión para chatear');
+      return;
+    }
+    if (iniciandoChat) return;
+    setIniciandoChat(true);
+    try {
+      const res = await axiosInstance.post('/conversaciones', {
+        id_usuario_2: producto.id_vendedor
+      });
+      navigate(`/chat/${res.data.id_conversacion}`);
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al iniciar el chat';
+      toast.error('Error: ' + errorMsg);
+    } finally {
+      setIniciandoChat(false);
+    }
+  };
+
   if (!producto) return <div className="container text-center py-12">Cargando...</div>;
 
   const fotos = typeof producto.fotos === 'string' ? JSON.parse(producto.fotos) : producto.fotos || [];
 
   const textoDescripcion = (producto.descripcion || producto.descripcion_producto || producto.decripcion || '').trim();
   const descripcionMostrar = textoDescripcion.length > 0 ? textoDescripcion : 'Sin descripción disponible';
+  const esPropietario = usuario?.id_usuario === producto?.id_vendedor;
 
   return (
     <div className="container py-8">
@@ -213,11 +245,40 @@ const ProductoDetalle = () => {
               <button onClick={() => setMostrarEditarModal(true)} className="w-full bg-gradient-to-r from-pink-600 via-red-500 to-orange-500 text-white py-3 rounded-2xl font-bold hover:from-pink-700 hover:via-red-600 hover:to-orange-600 transition-all duration-300 shadow-md hover:shadow-lg hover:scale-[1.02]">
                 Editar información
               </button>
+              <button 
+                onClick={() => {
+                  if (producto.id_vendedor) {
+                    window.location.href = `/artesanos/${producto.id_vendedor}`;
+                  } else {
+                    toast.error('Este producto no tiene un vendedor asociado en la base de datos');
+                  }
+                }} 
+                className="w-full bg-gray-800 text-white py-3 rounded-2xl font-bold text-center hover:bg-gray-900 transition-all duration-300 shadow-md hover:scale-[1.02]"
+              >
+                Ver Perfil del Vendedor
+              </button>
+            </div>
+          )}
+
+          {/* Botones Propietario (Artesano dueño del producto) */}
+          {usuario?.tipo_usuario === 'artesano' && esPropietario && (
+            <div className="flex flex-col gap-3">
+              <div className="bg-yellow-100 text-yellow-800 py-2 rounded-xl font-bold text-center border border-yellow-300">
+                🌟 Este es tu producto
+              </div>
+              <button onClick={() => setMostrarEditarModal(true)} className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-2xl font-bold hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-md hover:scale-[1.02]">
+                Editar mi producto
+              </button>
+              {producto.estado_producto === 'activo' && (
+                <button onClick={handleDarDeBaja} className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-2xl font-bold hover:from-orange-600 hover:to-red-600 transition-all duration-300 shadow-md hover:scale-[1.02]">
+                  Pausar mi producto
+                </button>
+              )}
             </div>
           )}
 
           {/* Botones Comprador */}
-          {usuario?.tipo_usuario !== 'administrador' && producto.estado_producto === 'activo' && (
+          {usuario?.tipo_usuario !== 'administrador' && !esPropietario && producto.estado_producto === 'activo' && (
             <div className="space-y-3">
               <div className="flex gap-2">
                 <input
@@ -258,8 +319,14 @@ const ProductoDetalle = () => {
                   {esReferencia ? <FaHeart /> : <FaRegHeart />}
                   {agregandoFavorito ? 'Guardando...' : 'Favoritos'}
                 </button>
-                <button className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:from-purple-600 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg hover:scale-[1.02]">
-                  <FaComments /> Chat
+                
+                {/* ✅ Conectado con la lógica del chat */}
+                <button 
+                  onClick={handleCrearChat}
+                  disabled={iniciandoChat}
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:from-purple-600 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FaComments /> {iniciandoChat ? 'Cargando...' : 'Chat'}
                 </button>
               </div>
             </div>
