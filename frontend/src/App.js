@@ -11,9 +11,12 @@ import DashboardComprador from './pages/DashboardComprador';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import PanelAdmin from './pages/PanelAdmin';
+import GestionProductosPage from './pages/GestionProductosPage'; // <--- IMPORTACIÓN NUEVA
 import PerfilArtesano from './pages/PerfilArtesano';
 import ProductoDetalle from './pages/ProductoDetalle';
+import ProductosPage from './pages/ProductosPage';
 import RegistroPage from './pages/RegistroPage';
+import SugeridosPage from './pages/SugeridosPage';
 
 // Componentes
 import Footer from './components/Footer';
@@ -30,18 +33,19 @@ function App() {
   return (
     <Router>
       <Navbar />
-      {/* Ya vi que sí tenías el Toaster aquí, excelente, lo dejamos por si acaso */}
       <Toaster position="top-right" />
       <div className="site-main">
         <Routes>
           {/* Rutas públicas */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/productos" element={<ProductosPage />} />
+          <Route path="/para-ti" element={<SugeridosPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/registro" element={<RegistroPage />} />
           <Route path="/productos/:id" element={<ProductoDetalle />} />
           <Route path="/artesano/:id" element={<PerfilArtesano />} />
 
-          {/* Rutas para Comprador (Abiertas para la expo, el backend protege los datos) */}
+          {/* Rutas para Comprador */}
           <Route path="/dashboard/comprador" element={<DashboardComprador />} />
           <Route path="/carrito" element={<CarritoCompras />} />
           
@@ -55,6 +59,7 @@ function App() {
 
           {/* Rutas para Admin */}
           <Route path="/admin" element={<PanelAdmin />} />
+          <Route path="/admin/productos-desactivados" element={<GestionProductosPage />} /> {/* <--- RUTA NUEVA */}
 
           {/* Ruta no encontrada */}
           <Route path="*" element={<Navigate to="/" />} />

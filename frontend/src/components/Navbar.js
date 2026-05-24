@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaChevronDown, FaShoppingCart, FaUser } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import authStore from '../store/authStore';
 
 const Navbar = () => {
     const navigate = useNavigate();
-    const { isAuthenticated, usuario, logout } = authStore();
+    const { isAuthenticated, usuario, logout, checkAuth } = authStore();
     const [showDropdown, setShowDropdown] = useState(false);
+
+    useEffect(() => {
+        checkAuth(); // Asegura que el usuario esté cargado al montar el componente
+    }, [checkAuth]);
 
     const handleLogout = () => {
         logout();
@@ -14,10 +18,13 @@ const Navbar = () => {
         setShowDropdown(false);
     };
 
-    // Lógica para definir a dónde manda "Mi Perfil" dependiendo del tipo de usuario
-    let rutaDashboard = '/dashboard/comprador';
-    if (usuario?.tipo_usuario === 'artesano') rutaDashboard = '/dashboard/artesano';
-    if (usuario?.tipo_usuario === 'administrador') rutaDashboard = '/admin';
+    // Lógica robusta de redirección
+    const getDashboardPath = () => {
+        if (!usuario) return '/';
+        if (usuario.tipo_usuario === 'administrador') return '/admin';
+        if (usuario.tipo_usuario === 'artesano') return '/dashboard/artesano';
+        return '/dashboard/comprador';
+    };
 
     return (
         <header>
@@ -30,11 +37,10 @@ const Navbar = () => {
                     </div>
                 </Link>
 
-                {/* Enlaces corregidos para que deslicen a las secciones en la misma página */}
                 <nav>
-                    <a href="/">Inicio</a>
-                    <a href="/#productos">Productos</a>
-                    <a href="/#categorias">Categorías</a>
+                    <Link to="/">Inicio</Link>
+                    <Link to="/productos">Productos</Link>
+                    <Link to="/para-ti">Para ti</Link>
                 </nav>
 
                 <div className="nav-right">
@@ -46,9 +52,9 @@ const Navbar = () => {
                     ) : (
                         <>
                             {usuario?.tipo_usuario !== 'administrador' && (
-                                 <Link to="/carrito" style={{ color: '#374151', fontSize: '1.25rem' }} title="Carrito">
-                                     <FaShoppingCart />
-                                 </Link>
+                                <Link to="/carrito" style={{ color: '#374151', fontSize: '1.25rem' }} title="Carrito">
+                                    <FaShoppingCart />
+                                </Link>
                             )}
                             <div className={`dropdown ${showDropdown ? 'open' : ''}`}>
                                 <button 
@@ -56,14 +62,14 @@ const Navbar = () => {
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#374151' }}
                                 >
                                     <FaUser size={16} />
-                                    <span style={{ fontSize: '0.875rem', fontWeight: '500', display: 'none' }}>
-                                        {usuario?.nombre?.split(' ')[0]}
-                                    </span>
+                                    <span>{usuario?.nombre?.split(' ')[0]}</span>
                                     <FaChevronDown size={12} />
                                 </button>
                                 <div className="dropdown-menu">
-                                    <Link to={rutaDashboard} onClick={() => setShowDropdown(false)}>Mi Perfil</Link>
-                                    <Link to={rutaDashboard} onClick={() => setShowDropdown(false)}>Mis Compras</Link>
+                                    <Link to={getDashboardPath()} onClick={() => setShowDropdown(false)}>Mi Perfil</Link>
+                                    {usuario?.tipo_usuario !== 'administrador' && (
+                                        <Link to="/dashboard/comprador" onClick={() => setShowDropdown(false)}>Mis Compras</Link>
+                                    )}
                                     <button onClick={handleLogout}>Cerrar sesión</button>
                                 </div>
                             </div>

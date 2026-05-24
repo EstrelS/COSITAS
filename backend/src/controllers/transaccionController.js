@@ -58,7 +58,7 @@ const obtenerTransacciones = async (req, res) => {
         const connection = await pool.getConnection();
 
         const [transacciones] = await connection.query(
-            'SELECT t.*, p.titulo, p.fotos FROM transacciones t JOIN productos p ON t.id_producto = p.id_producto WHERE t.id_comprador = ? ORDER BY t.fecha_transaccion DESC',
+            'SELECT t.*, p.titulo, p.fotos, (SELECT COUNT(*) FROM calificaciones c WHERE c.id_transaccion = t.id_transacciones) AS ya_calificado FROM transacciones t JOIN productos p ON t.id_producto = p.id_producto WHERE t.id_comprador = ? ORDER BY t.fecha_transaccion DESC',
             [id_usuario]
         );
 
