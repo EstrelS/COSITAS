@@ -33,8 +33,13 @@ const PanelAdmin = () => {
   const fetchUsuarios = async () => {
     try {
       const response = await axiosInstance.get('/auth/usuarios');
-      setUsuarios(response.data.usuarios || []);
-    } catch (err) { console.error('Error usuarios:', err); }
+      // Manejo flexible por si el backend responde con { usuarios: [...] } o directamente [...]
+      const dataUsuarios = response.data.usuarios || (Array.isArray(response.data) ? response.data : []);
+      setUsuarios(dataUsuarios);
+    } catch (err) { 
+      console.error('Error usuarios:', err); 
+      toast.error('Error al cargar la lista de usuarios');
+    }
   };
 
   const handleResolverReporte = async (id, estado) => {
@@ -71,12 +76,16 @@ const PanelAdmin = () => {
         {/* Reportes Table */}
         <div className="card p-6">
           <h2 className="text-2xl font-bold mb-6">Reportes Pendientes</h2>
-          {reportes.map(r => (
-            <div key={r.id_reporte} className="border-b py-4 flex justify-between items-center">
-              <div><p className="font-bold">{r.motivo_reporte}</p><p className="text-sm text-gray-500">{r.descripcion}</p></div>
-              <button onClick={() => handleResolverReporte(r.id_reporte, 'resuelto')} className="bg-green-600 text-white px-3 py-1 rounded text-sm">Resolver</button>
-            </div>
-          ))}
+          {reportes.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">No hay reportes pendientes por revisar en este momento.</p>
+          ) : (
+            reportes.map(r => (
+              <div key={r.id_reporte} className="border-b py-4 flex justify-between items-center">
+                <div><p className="font-bold">{r.motivo_reporte}</p><p className="text-sm text-gray-500">{r.descripcion}</p></div>
+                <button onClick={() => handleResolverReporte(r.id_reporte, 'resuelto')} className="bg-green-600 text-white px-3 py-1 rounded text-sm">Resolver</button>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Acceso a Gestión de Productos */}

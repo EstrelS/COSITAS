@@ -14,7 +14,9 @@ import PanelAdmin from './pages/PanelAdmin';
 import GestionProductosPage from './pages/GestionProductosPage'; // <--- IMPORTACIÓN NUEVA
 import PerfilArtesano from './pages/PerfilArtesano';
 import ProductoDetalle from './pages/ProductoDetalle';
+import ProductosPage from './pages/ProductosPage';
 import RegistroPage from './pages/RegistroPage';
+import SugeridosPage from './pages/SugeridosPage';
 
 // Componentes
 import Footer from './components/Footer';
@@ -36,6 +38,8 @@ function App() {
         <Routes>
           {/* Rutas públicas */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/productos" element={<ProductosPage />} />
+          <Route path="/para-ti" element={<SugeridosPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/registro" element={<RegistroPage />} />
           <Route path="/productos/:id" element={<ProductoDetalle />} />

@@ -128,7 +128,7 @@ const CarritoCompras = () => {
           </div>
           <div className="card h-fit">
             <h2 className="text-2xl font-bold mb-4">Total: ${total.toFixed(2)}</h2>
-            <button onClick={() => setMostrarPagoModal(true)} className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-bold hover:from-green-600 hover:to-green-700 shadow-md transition-all duration-300">
+            <button onClick={() => setMostrarPagoModal(true)} className="w-full bg-gradient-to-r from-pink-500 to-orange-500 text-white py-3 rounded-xl font-bold hover:from-pink-600 hover:to-orange-600 shadow-md transition-all duration-300">
               Proceder al Pago
             </button>
           </div>

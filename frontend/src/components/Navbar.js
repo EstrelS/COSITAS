@@ -38,9 +38,9 @@ const Navbar = () => {
                 </Link>
 
                 <nav>
-                    <a href="/">Inicio</a>
-                    <a href="/#productos">Productos</a>
-                    <a href="/#categorias">Categorías</a>
+                    <Link to="/">Inicio</Link>
+                    <Link to="/productos">Productos</Link>
+                    <Link to="/para-ti">Para ti</Link>
                 </nav>
 
                 <div className="nav-right">
