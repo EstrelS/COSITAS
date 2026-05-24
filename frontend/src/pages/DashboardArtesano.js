@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FaBox, FaEdit, FaEye, FaPause, FaPlus, FaTrash, FaUserCircle } from 'react-icons/fa';
+import { FaBox, FaEdit, FaEye, FaPause, FaPlus, FaTrash, FaUserCircle, FaHeart } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axiosInstance from '../config/axiosConfig';
@@ -9,6 +9,8 @@ const DashboardArtesano = () => {
     const [productos, setProductos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [procesandoID, setProcesandoID] = useState(null);
+    const [favoritos, setFavoritos] = useState([]);
+    const [procesandoFavorito, setProcesandoFavorito] = useState(null);
     const { usuario } = authStore();
 
     // Estados para Modales
@@ -23,6 +25,7 @@ const DashboardArtesano = () => {
         if (usuario?.id_usuario) {
             fetchProductos();
             fetchCategoriasYPerfil();
+            fetchFavoritos();
         }
     }, [usuario]);
 
@@ -52,6 +55,27 @@ const DashboardArtesano = () => {
             toast.error('Error al cargar productos');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchFavoritos = async () => {
+        try {
+            const res = await axiosInstance.get('/favoritos');
+            setFavoritos(res.data.favoritos || []);
+        } catch (error) { console.error('Error al cargar favoritos'); }
+    };
+
+    const handleEliminarFavorito = async (id_producto) => {
+        if (procesandoFavorito === id_producto) return;
+        setProcesandoFavorito(id_producto);
+        try {
+            await axiosInstance.delete(`/favoritos/${id_producto}`);
+            setFavoritos(favoritos.filter(f => f.id_producto !== id_producto));
+            toast.success('Producto eliminado de favoritos');
+        } catch (err) {
+            toast.error('Error al eliminar de favoritos');
+        } finally {
+            setProcesandoFavorito(null);
         }
     };
 
@@ -154,6 +178,13 @@ const DashboardArtesano = () => {
                         </button>
                     </div>
                 </div>
+                <div className="card flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition shadow-sm" onClick={() => document.getElementById('seccion-favoritos')?.scrollIntoView({behavior: 'smooth'})}>
+                    <div className="bg-red-100 p-4 rounded-full text-red-600 text-2xl"><FaHeart /></div>
+                    <div>
+                        <p className="text-gray-600">Favoritos</p>
+                        <p className="text-2xl font-bold">{favoritos.length}</p>
+                    </div>
+                </div>
             </div>
 
             <h2 className="text-2xl font-bold mb-6">Mis Productos</h2>
@@ -208,6 +239,39 @@ const DashboardArtesano = () => {
             ))}
         </div>
             )}
+
+            {/* Favoritos Detallados */}
+            <div id="seccion-favoritos" className="mt-12 mb-8">
+                <h2 className="text-2xl font-bold mb-6">Mis Favoritos</h2>
+                {favoritos.length === 0 ? (
+                    <div className="card text-center py-12 text-gray-500">
+                        Aún no tienes productos agregados a favoritos.
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {favoritos.map((fav) => (
+                            <div key={fav.id_producto} className="flex gap-4 items-center card hover:shadow-lg transition-colors p-4">
+                                {obtenerImagenUrl(fav.fotos) ? (
+                                    <img src={obtenerImagenUrl(fav.fotos)} alt={fav.titulo} className="w-20 h-20 object-cover rounded-lg" />
+                                ) : (
+                                    <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center text-xs text-gray-500 text-center">Sin foto</div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    <Link to={`/productos/${fav.id_producto}`} className="font-bold text-lg hover:text-blue-600 block truncate">{fav.titulo}</Link>
+                                    <p className="text-blue-600 font-bold">${fav.precio}</p>
+                                </div>
+                                <button 
+                                    onClick={() => handleEliminarFavorito(fav.id_producto)} 
+                                    disabled={procesandoFavorito === fav.id_producto}
+                                    className="text-red-600 p-3 bg-red-50 hover:bg-red-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                >
+                                    <FaTrash />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             {/* --- MODAL NUEVO PRODUCTO --- */}
             {mostrarModalProducto && (
