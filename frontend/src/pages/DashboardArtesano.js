@@ -173,7 +173,9 @@ const DashboardArtesano = () => {
             await axiosInstance.put('/artesanos/perfil', formPerfil);
             toast.success('Información de perfil actualizada');
             setMostrarModalPerfil(false);
-        } catch (err) { toast.error('Error al actualizar perfil'); }
+        } catch (err) { 
+            toast.error(err.response?.data?.errors?.[0] || err.response?.data?.message || 'Error al actualizar perfil'); 
+        }
     };
 
     const handlePausarProducto = async (id) => {

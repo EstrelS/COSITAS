@@ -130,6 +130,7 @@ const ProductoDetalle = () => {
                 <button onClick={handleDarDeBaja} className="w-full bg-red-600 text-white py-2 rounded-lg font-bold">Dar de baja</button>
               )}
               <button className="w-full bg-yellow-500 text-white py-2 rounded-lg font-bold">Editar información</button>
+              <button onClick={() => navigate(`/artesanos/${producto.id_vendedor}`)} className="w-full bg-gray-900 text-white py-2 rounded-lg font-bold hover:bg-black transition-colors shadow-md">Ver perfil del vendedor</button>
             </div>
           )}
           
