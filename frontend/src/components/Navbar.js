@@ -67,9 +67,6 @@ const Navbar = () => {
                                 </button>
                                 <div className="dropdown-menu">
                                     <Link to={getDashboardPath()} onClick={() => setShowDropdown(false)}>Mi Perfil</Link>
-                                    {usuario?.tipo_usuario !== 'administrador' && (
-                                        <Link to="/dashboard/comprador" onClick={() => setShowDropdown(false)}>Mis Compras</Link>
-                                    )}
                                     <button onClick={handleLogout}>Cerrar sesión</button>
                                 </div>
                             </div>

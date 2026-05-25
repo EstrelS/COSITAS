@@ -14,6 +14,11 @@ const ProductoDetalle = () => {
   const [cantidad, setCantidad] = useState(1);
   const { usuario, isAuthenticated } = authStore();
 
+  // Estados para el Modal de Editar (Admin)
+  const [mostrarModalEditar, setMostrarModalEditar] = useState(false);
+  const [formEditar, setFormEditar] = useState({ titulo: '', precio: '', descripcion: '' });
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+
   useEffect(() => {
     fetchProducto();
     fetchCalificaciones();
@@ -53,6 +58,31 @@ const ProductoDetalle = () => {
       toast.success('Producto reactivado');
       fetchProducto();
     } catch (err) { toast.error('Error al reactivar'); }
+  };
+
+  // Lógica de Edición (Admin)
+  const abrirModalEditar = () => {
+    setFormEditar({
+      titulo: producto.titulo,
+      precio: producto.precio,
+      descripcion: producto.descripcion || ''
+    });
+    setMostrarModalEditar(true);
+  };
+
+  const handleGuardarEdicion = async (e) => {
+    e.preventDefault();
+    setGuardandoEdicion(true);
+    try {
+      await axiosInstance.patch(`/admin/productos/${id}/editar`, formEditar);
+      toast.success('Producto editado exitosamente por Admin');
+      setMostrarModalEditar(false);
+      fetchProducto(); // Recargar los datos visuales
+    } catch (err) {
+      toast.error(err.response?.data?.errors?.[0] || 'Error al editar producto');
+    } finally {
+      setGuardandoEdicion(false);
+    }
   };
 
   // Lógica para herramientas del Vendedor
@@ -129,7 +159,8 @@ const ProductoDetalle = () => {
               ) : (
                 <button onClick={handleDarDeBaja} className="w-full bg-red-600 text-white py-2 rounded-lg font-bold">Dar de baja</button>
               )}
-              <button className="w-full bg-yellow-500 text-white py-2 rounded-lg font-bold">Editar información</button>
+              <button onClick={abrirModalEditar} className="w-full bg-yellow-500 text-white py-2 rounded-lg font-bold hover:bg-yellow-600 transition shadow">Editar información</button>
+              <button onClick={() => navigate(`/artesanos/${producto.id_vendedor}`)} className="w-full bg-gray-900 text-white py-2 rounded-lg font-bold hover:bg-black transition-colors shadow-md">Ver perfil del vendedor</button>
             </div>
           )}
           
@@ -217,6 +248,33 @@ const ProductoDetalle = () => {
           </div>
         )}
       </div>
+
+      {/* --- MODAL EDITAR PRODUCTO (SÓLO ADMIN) --- */}
+      {mostrarModalEditar && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-bold mb-4">Editar Producto (Admin)</h2>
+            <form onSubmit={handleGuardarEdicion} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold mb-1">Título</label>
+                <input type="text" required value={formEditar.titulo} onChange={e => setFormEditar({...formEditar, titulo: e.target.value})} disabled={guardandoEdicion} className="w-full border rounded px-3 py-2 disabled:opacity-50" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-1">Precio (COP)</label>
+                <input type="number" required min="1" value={formEditar.precio} onChange={e => setFormEditar({...formEditar, precio: e.target.value})} disabled={guardandoEdicion} className="w-full border rounded px-3 py-2 disabled:opacity-50" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-1">Descripción</label>
+                <textarea required value={formEditar.descripcion} onChange={e => setFormEditar({...formEditar, descripcion: e.target.value})} disabled={guardandoEdicion} className="w-full border rounded px-3 py-2 disabled:opacity-50" rows="4"></textarea>
+              </div>
+              <div className="flex gap-2 mt-6 pt-4 border-t">
+                <button type="button" onClick={() => setMostrarModalEditar(false)} disabled={guardandoEdicion} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50">Cancelar</button>
+                <button type="submit" disabled={guardandoEdicion} className="flex-1 bg-yellow-500 text-white py-2 rounded-xl font-bold hover:bg-yellow-600 transition-colors shadow-md disabled:opacity-50">{guardandoEdicion ? 'Guardando...' : 'Guardar Cambios'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

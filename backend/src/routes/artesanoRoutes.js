@@ -5,10 +5,11 @@ const { verifyToken, verifyRole } = require('../middleware/authMiddleware');
 const Joi = require('joi');
 
 const perfilSchema = Joi.object({
-    especialidad: Joi.string(),
-    descripcion: Joi.string(),
-    años_experiencia: Joi.number().integer().min(0),
-    redes_sociales: Joi.object()
+    especialidad: Joi.string().allow('', null),
+    descripcion: Joi.string().allow('', null),
+    años_experiencia: Joi.number().integer().min(0).allow('', null),
+    redes_sociales: Joi.object(),
+    foto_perfil_url: Joi.string().allow('', null)
 });
 
 // Obtener perfil del artesano
@@ -18,7 +19,7 @@ router.get('/:id', async (req, res) => {
         const connection = await pool.getConnection();
         
         const [artesanos] = await connection.query(
-        'SELECT pa.*, u.nombre, u.calificacion_promedio, u.foto_perfil_url, u.verificado FROM perfil_artesano pa JOIN usuarios u ON pa.id_usuario = u.id_usuario WHERE pa.id_usuario = ? AND pa.eliminado = FALSE',
+        'SELECT u.id_usuario, u.nombre, u.calificacion_promedio, u.foto_perfil_url, u.verificado, pa.especialidad, pa.decripcion_taller AS descripcion, pa.años_experiencia, pa.redes_sociales_json AS redes_sociales FROM usuarios u LEFT JOIN perfil_artesano pa ON u.id_usuario = pa.id_usuario WHERE u.id_usuario = ? AND (u.eliminado = FALSE OR u.eliminado IS NULL) AND u.tipo_usuario = "artesano"',
         [id]
         );
         
@@ -41,14 +42,24 @@ router.put('/perfil', verifyToken, verifyRole('artesano'), async (req, res) => {
         if (error) return res.status(400).json({ success: false, errors: error.details.map(d => d.message) });
         
         const id_usuario = req.user.id_usuario;
-        const { especialidad, descripcion, años_experiencia, redes_sociales } = value;
+        
+        // Asignamos valores por defecto en caso de que vengan vacíos
+        const especialidad = value.especialidad || '';
+        const descripcion = value.descripcion || '';
+        const años_experiencia = value.años_experiencia || 0;
+        const redes_sociales = value.redes_sociales || {};
         const connection = await pool.getConnection();
         
         await connection.query(
-        'UPDATE perfil_artesano SET especialidad = ?, descripcion = ?, años_experiencia = ?, redes_sociales = ? WHERE id_usuario = ?',
-        [especialidad, descripcion, años_experiencia, JSON.stringify(redes_sociales || {}), id_usuario]
+        'INSERT INTO perfil_artesano (id_usuario, especialidad, decripcion_taller, años_experiencia, redes_sociales_json) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE especialidad = ?, decripcion_taller = ?, años_experiencia = ?, redes_sociales_json = ?',
+        [id_usuario, especialidad, descripcion, años_experiencia, JSON.stringify(redes_sociales), especialidad, descripcion, años_experiencia, JSON.stringify(redes_sociales)]
         );
         
+        // Si se envía una foto de perfil, actualizamos la tabla de usuarios
+        if (value.foto_perfil_url !== undefined) {
+            await connection.query('UPDATE usuarios SET foto_perfil_url = ? WHERE id_usuario = ?', [value.foto_perfil_url, id_usuario]);
+        }
+
         connection.release();
         res.json({ success: true, message: 'Perfil actualizado' });
     } catch (err) {
@@ -62,7 +73,7 @@ router.get('/', async (req, res) => {
         const connection = await pool.getConnection();
         
         const [artesanos] = await connection.query(
-        'SELECT pa.*, u.nombre, u.calificacion_promedio, u.foto_perfil_url FROM perfil_artesano pa JOIN usuarios u ON pa.id_usuario = u.id_usuario WHERE pa.eliminado = FALSE AND pa.verificado = TRUE'
+        'SELECT pa.*, pa.decripcion_taller AS descripcion, pa.redes_sociales_json AS redes_sociales, u.nombre, u.calificacion_promedio, u.foto_perfil_url FROM perfil_artesano pa JOIN usuarios u ON pa.id_usuario = u.id_usuario WHERE (pa.eliminado = FALSE OR pa.eliminado IS NULL) AND pa.verificado = TRUE'
         );
         
         connection.release();

@@ -14,10 +14,14 @@ const LoginPage = () => {
     e.preventDefault();
     setLoading(true);
 
+    // FIX AUTOCOMPLETADO: Leer los valores directamente de la pantalla
+    const emailReal = document.querySelector('input[type="email"]').value;
+    const passwordReal = document.querySelector('input[type="password"]').value;
+
     try {
       const response = await axiosInstance.post('/auth/login', {
-        email,
-        password
+        email: emailReal,
+        password: passwordReal
       });
 
       localStorage.setItem('token', response.data.token);
@@ -35,8 +39,9 @@ const LoginPage = () => {
       }
     } catch (err) {
       console.error('Error completo en login:', err);
+      const mensajeReal = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Error al conectar con el servidor.';
       // Alerta nativa para ver el error real en pantalla
-      alert(err.response?.data?.message || 'Error al iniciar sesión. Verifica el backend.');
+      alert(mensajeReal);
     } finally {
       setLoading(false);
     }

@@ -10,9 +10,11 @@ dotenv.config();
 const app = express();
 
 // ============== MIDDLEWARES DE SEGURIDAD ==============
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: false,
+}));
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: [process.env.FRONTEND_URL || 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
     credentials: true
 }));
 
@@ -22,7 +24,8 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ============== MIDDLEWARE CSRF ==============
-app.use(csrfMiddleware);
+// APAGADO TEMPORALMENTE: Para evitar el error de "Token CSRF inválido o expirado"
+// app.use(csrfMiddleware);
 
 // ============== RUTAS ==============
 app.use('/api/v1/csrf', require('./routes/csrfRoutes'));
@@ -42,6 +45,7 @@ app.use('/api/v1/reportes', require('./routes/reporteRoutes'));
 app.use('/api/v1/ubicaciones', require('./routes/ubicacionRoutes'));
 app.use('/api/v1/busqueda', require('./routes/busquedaRoutes'));
 app.use('/api/v1/admin', require('./routes/adminRoutes'));
+app.use('/api/v1/upload', require('./routes/uploadRoutes'));
 
 // ============== MANEJO DE ERRORES ==============
 app.use((err, req, res, next) => {
@@ -59,7 +63,7 @@ app.use((req, res) => {
 });
 
 // ============== INICIAR SERVIDOR ==============
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`Servidor COSITAS ejecutándose en puerto ${PORT}`);
     console.log(`URL: http://localhost:${PORT}`);

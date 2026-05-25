@@ -46,6 +46,7 @@ const validarContenidoApropiado = (texto) => {
 };
 
 const crearProducto = async (req, res) => {
+    let connection;
     try {
         const { error, value } = productoSchema.validate(req.body);
         if (error) return res.status(400).json({ success: false, errors: error.details.map(d => d.message) });
@@ -81,32 +82,85 @@ const crearProducto = async (req, res) => {
         }
 
         const id_vendedor = req.user.id_usuario;
-        const connection = await pool.getConnection();
-        const [result] = await connection.query(
-        'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, fotos) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
-        );
-        connection.release();
-        res.status(201).json({ success: true, message: 'Producto creado', id_producto: result.insertId });
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        let result;
+        try {
+            // Intento 1: Con decripcion y fotos
+            [result] = await connection.query(
+                'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, "activo")',
+                [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
+            );
+        } catch (e1) {
+            try {
+                // Intento 2: Con descripcion (bien escrito) y fotos
+                [result] = await connection.query(
+                    'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, "activo")',
+                    [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
+                );
+            } catch (e2) {
+                try {
+                    // Intento 3: Sin fotos y con decripcion
+                    [result] = await connection.query(
+                        'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, estado_producto) VALUES (?, ?, ?, ?, ?, ?, "activo")',
+                        [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria]
+                    );
+                } catch (e3) {
+                    // Intento 4: Sin fotos y con descripcion
+                    [result] = await connection.query(
+                        'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, estado_producto) VALUES (?, ?, ?, ?, ?, ?, "activo")',
+                        [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria]
+                    );
+                }
+            }
+        }
+
+        if (!result) {
+            throw new Error("La tabla productos no coincide con ninguna de las estructuras esperadas.");
+        }
+        
+        const id_producto = result.insertId;
+        
+        // Guardar cada foto en imagenes_producto (con orden)
+        if (fotos && fotos.length > 0) {
+            for (let i = 0; i < fotos.length; i++) {
+                try {
+                    await connection.query(
+                        'INSERT INTO imagenes_producto (id_producto, url_imagen, orden) VALUES (?, ?, ?)',
+                        [id_producto, fotos[i], i + 1]
+                    );
+                } catch (imgErr) {
+                    console.log('⚠️ Aviso: La tabla imagenes_producto no existe o dio error:', imgErr.message);
+                }
+            }
+        }
+        
+        await connection.commit();
+        res.status(201).json({ success: true, message: 'Producto creado', id_producto });
     } catch (err) {
+        if (connection) await connection.rollback();
         console.error("Error en crearProducto:", err);
         res.status(500).json({ success: false, message: err.message });
+    } finally {
+        if (connection) connection.release();
     }
 };
 
 const obtenerProductos = async (req, res) => {
     let connection;
     try {
-        const { categoria, busqueda, vendedor } = req.query;
+        const { categoria, busqueda, vendedor, incluir_inactivos } = req.query;
         connection = await pool.getConnection();
+        let estadoCondition = incluir_inactivos === 'true' ? '1=1' : 'p.estado_producto = "activo"';
         let query = `
-            SELECT p.*, 
+            SELECT p.*, p.decripcion AS descripcion,
                    (SELECT COALESCE(AVG(c.puntiacion), 0) 
                     FROM calificaciones c 
                     JOIN transacciones t ON c.id_transaccion = t.id_transacciones 
                     WHERE t.id_producto = p.id_producto) AS calificacion_promedio
             FROM productos p 
-            WHERE p.estado_producto = "activo"
+            WHERE ${estadoCondition}
         `;
         const params = [];
         if (categoria) { query += ' AND p.id_categoria = ?'; params.push(categoria); }
@@ -128,7 +182,7 @@ const obtenerProductoId = async (req, res) => {
         const { id } = req.params;
         connection = await pool.getConnection();
         const [productos] = await connection.query(`
-            SELECT p.*, 
+            SELECT p.*, p.decripcion AS descripcion,
                    (SELECT COALESCE(AVG(c.puntiacion), 0) 
                     FROM calificaciones c 
                     JOIN transacciones t ON c.id_transaccion = t.id_transacciones 
@@ -207,7 +261,7 @@ const actualizarProducto = async (req, res) => {
         }
 
         if (descripcion !== undefined) {
-            updateQuery += 'descripcion = ?, ';
+            updateQuery += 'decripcion = ?, ';
             updateValues.push(descripcion);
         }
 
@@ -229,10 +283,13 @@ const actualizarProducto = async (req, res) => {
 const pausarProducto = async (req, res) => {
     try {
         const { id } = req.params;
+        // Si el que hace la petición es administrador, lo "suspende", si es artesano lo "pausa"
+        const estado = req.user.tipo_usuario === 'administrador' ? 'suspendido' : 'pausado';
+        
         const connection = await pool.getConnection();
-        await connection.query('UPDATE productos SET estado_producto = "suspendido" WHERE id_producto = ?', [id]);
+        await connection.query('UPDATE productos SET estado_producto = ? WHERE id_producto = ?', [estado, id]);
         connection.release();
-        res.json({ success: true, message: 'Producto dado de baja correctamente' });
+        res.json({ success: true, message: `Producto ${estado} correctamente` });
     } catch (err) { 
         console.error("Error en pausarProducto:", err);
         res.status(500).json({ success: false, message: err.message }); 
@@ -246,6 +303,15 @@ const reactivarProducto = async (req, res) => {
         const { id } = req.params;
         const connection = await pool.getConnection();
         
+        // Verificación de seguridad: Evitar que el vendedor reactive un producto suspendido por el admin
+        if (req.user.tipo_usuario !== 'administrador') {
+            const [prods] = await connection.query('SELECT estado_producto FROM productos WHERE id_producto = ?', [id]);
+            if (prods.length > 0 && prods[0].estado_producto === 'suspendido') {
+                connection.release();
+                return res.status(403).json({ success: false, message: 'Este producto fue suspendido por un Administrador y no puede ser reactivado.' });
+            }
+        }
+
         const [result] = await connection.query(
             'UPDATE productos SET estado_producto = "activo" WHERE id_producto = ?', 
             [id]

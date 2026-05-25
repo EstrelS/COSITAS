@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FaComments, FaFacebook, FaInstagram, FaStar } from 'react-icons/fa';
+import { FaFacebook, FaInstagram, FaStar } from 'react-icons/fa';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axiosInstance from '../config/axiosConfig';
@@ -12,7 +12,6 @@ const PerfilArtesano = () => {
   const [artesano, setArtesano] = useState(null);
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [iniciandoChat, setIniciandoChat] = useState(false);
 
   useEffect(() => {
     fetchArtesano();
@@ -53,25 +52,6 @@ const PerfilArtesano = () => {
     return '';
   };
 
-  const handleCrearChat = async () => {
-    if (!isAuthenticated) {
-      toast.error('Debes iniciar sesión para contactar al artesano');
-      return;
-    }
-    if (iniciandoChat) return;
-    setIniciandoChat(true);
-    try {
-      const res = await axiosInstance.post('/conversaciones', {
-        id_usuario_2: id
-      });
-      navigate(`/chat/${res.data.id_conversacion}`);
-    } catch (err) {
-      toast.error('Error al iniciar el chat');
-    } finally {
-      setIniciandoChat(false);
-    }
-  };
-
   if (loading) {
     return <div className="container text-center py-12">Cargando...</div>;
   }
@@ -110,9 +90,6 @@ const PerfilArtesano = () => {
                   <p className="text-blue-600 font-bold">✓ Verificado</p>
                 )}
               </div>
-              <button onClick={handleCrearChat} disabled={iniciandoChat} className="btn-primary flex items-center gap-2 disabled:opacity-50">
-                <FaComments /> {iniciandoChat ? 'Cargando...' : 'Contactar'}
-              </button>
             </div>
 
             <div className="flex items-center gap-2 mb-4">

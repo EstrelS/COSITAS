@@ -2,6 +2,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../config/axiosConfig';
+import CryptoJS from 'crypto-js'; // <-- Importar CryptoJS
 
 const RegistroPage = () => {
   const [nombre, setNombre] = useState('');
@@ -16,10 +17,14 @@ const RegistroPage = () => {
     setLoading(true);
 
     try {
+      // <-- Encriptar contraseña antes de enviar
+      const claveSecreta = process.env.REACT_APP_AES_SECRET_KEY || 'MiClaveSecretaSuperSegura2026';
+      const passwordEncriptado = CryptoJS.AES.encrypt(password, claveSecreta).toString();
+
       await axiosInstance.post('/auth/registro', {
         nombre,
         email,
-        password,
+        password: passwordEncriptado, // <-- Enviar contraseña encriptada
         tipo_usuario
       });
 
