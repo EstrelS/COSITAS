@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FaBox, FaComments, FaHeart, FaTrash, FaStar } from 'react-icons/fa';
+import { FaBox, FaHeart, FaTrash, FaStar } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axiosInstance from '../config/axiosConfig';
@@ -7,7 +7,6 @@ import axiosInstance from '../config/axiosConfig';
 const DashboardComprador = () => {
   const [transacciones, setTransacciones] = useState([]);
   const [favoritos, setFavoritos] = useState([]);
-  const [conversaciones, setConversaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [procesandoFavorito, setProcesandoFavorito] = useState(null);
 
@@ -38,16 +37,6 @@ const DashboardComprador = () => {
       setFavoritos(favRes.data.favoritos || []);
     } catch (err) {
       console.error('Error al cargar favoritos:', err);
-    }
-
-    // 3. Pedimos los chats solo si está autenticado
-    if (token) {
-      try {
-        const convRes = await axiosInstance.get('/conversaciones');
-        setConversaciones(convRes.data.conversaciones || []);
-      } catch (err) {
-        console.error('Error al cargar chats:', err);
-      }
     }
 
     setLoading(false);
@@ -115,7 +104,7 @@ const DashboardComprador = () => {
     <div className="container">
       <h1 className="text-4xl font-bold mb-8">Mi perfil</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
         <div className="card">
           <div className="flex items-center gap-4">
             <FaBox className="text-3xl text-blue-600" />
@@ -126,22 +115,12 @@ const DashboardComprador = () => {
           </div>
         </div>
 
-        <div className="card">
+        <div className="card cursor-pointer hover:bg-gray-50 transition shadow-sm" onClick={() => document.getElementById('seccion-favoritos')?.scrollIntoView({behavior: 'smooth'})}>
           <div className="flex items-center gap-4">
             <FaHeart className="text-3xl text-red-600" />
             <div>
               <p className="text-gray-600">Favoritos</p>
               <p className="text-3xl font-bold">{favoritos.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="flex items-center gap-4">
-            <FaComments className="text-3xl text-green-600" />
-            <div>
-              <p className="text-gray-600">Chats</p>
-              <p className="text-3xl font-bold">{conversaciones.length}</p>
             </div>
           </div>
         </div>
@@ -197,7 +176,7 @@ const DashboardComprador = () => {
       </div>
 
       {/* Favoritos Detallados */}
-      <div className="card mb-8">
+      <div id="seccion-favoritos" className="card mb-8">
         <h2 className="text-2xl font-bold mb-4">Mis Favoritos</h2>
         {favoritos.length === 0 ? (
           <p className="text-gray-500">Aún no tienes productos agregados a favoritos.</p>

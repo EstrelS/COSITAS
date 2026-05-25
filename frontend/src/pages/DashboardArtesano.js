@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FaBox, FaEdit, FaEye, FaPause, FaPlus, FaTrash, FaUserCircle, FaHeart } from 'react-icons/fa';
+import { FaBox, FaEdit, FaEye, FaPause, FaPlay, FaPlus, FaTrash, FaUserCircle, FaHeart } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axiosInstance from '../config/axiosConfig';
@@ -23,6 +23,12 @@ const DashboardArtesano = () => {
 
     const [mostrarModalPerfil, setMostrarModalPerfil] = useState(false);
     const [formPerfil, setFormPerfil] = useState({ especialidad: '', descripcion: '', años_experiencia: 0 });
+
+    // Estados Editar Producto
+    const [mostrarModalEditar, setMostrarModalEditar] = useState(false);
+    const [formEditar, setFormEditar] = useState({ id_producto: null, titulo: '', precio: '', descripcion: '' });
+    const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+    const [mostrarModalPausados, setMostrarModalPausados] = useState(false);
 
     useEffect(() => {
         if (usuario?.id_usuario) {
@@ -51,7 +57,7 @@ const DashboardArtesano = () => {
     const fetchProductos = async () => {
         try {
             const response = await axiosInstance.get('/productos', {
-                params: { vendedor: usuario.id_usuario }
+                params: { vendedor: usuario.id_usuario, incluir_inactivos: 'true' }
             });
             setProductos(response.data.productos || []);
         } catch (error) {
@@ -136,6 +142,31 @@ const DashboardArtesano = () => {
         }
     };
 
+    const abrirModalEditar = (producto) => {
+        setFormEditar({
+            id_producto: producto.id_producto,
+            titulo: producto.titulo,
+            precio: producto.precio,
+            descripcion: producto.descripcion || ''
+        });
+        setMostrarModalEditar(true);
+    };
+
+    const handleGuardarEdicion = async (e) => {
+        e.preventDefault();
+        setGuardandoEdicion(true);
+        try {
+            await axiosInstance.put(`/productos/${formEditar.id_producto}`, formEditar);
+            toast.success('Producto actualizado exitosamente');
+            setMostrarModalEditar(false);
+            fetchProductos();
+        } catch (err) {
+            toast.error(err.response?.data?.errors?.[0] || 'Error al actualizar producto');
+        } finally {
+            setGuardandoEdicion(false);
+        }
+    };
+
     const handleEditarPerfil = async (e) => {
         e.preventDefault();
         try {
@@ -156,14 +187,16 @@ const DashboardArtesano = () => {
         finally { setProcesandoID(null); }
     };
 
-    const handleEliminarProducto = async (id) => {
+    const handleReactivarProducto = async (id) => {
         if (procesandoID) return;
         setProcesandoID(id);
         try {
-            await axiosInstance.delete(`/productos/${id}`);
-            toast.success('Producto eliminado');
-            setProductos(productos.filter(producto => producto.id_producto !== id));
-        } catch(e) { toast.error("Error al eliminar"); }
+            await axiosInstance.patch(`/productos/${id}/reactivar`);
+            toast.success('Producto reactivado exitosamente');
+            fetchProductos();
+        } catch(err) { 
+            toast.error(err.response?.data?.message || "Error al reactivar el producto"); 
+        }
         finally { setProcesandoID(null); }
     };
 
@@ -180,6 +213,8 @@ const DashboardArtesano = () => {
     };
 
     if (loading) return <div className="container py-12 text-center">Cargando dashboard...</div>;
+
+    const productosActivos = productos.filter(p => p.estado_producto === 'activo');
 
     return (
         <div className="container py-8">
@@ -231,14 +266,26 @@ const DashboardArtesano = () => {
                 </div>
             </div>
 
+            {/* Tarjeta de Gestión de Inventario (Copia del Admin) */}
+            <div className="card p-6 border-l-4 border-yellow-500 mb-8">
+                <h2 className="text-2xl font-bold mb-2">Gestión de Inventario</h2>
+                <p className="text-gray-600 mb-4">Administra tus productos pausados y reactívalos aquí.</p>
+                <button 
+                    onClick={() => setMostrarModalPausados(true)} 
+                    className="inline-block bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600 font-bold shadow-md transition"
+                >
+                    Ver productos pausados
+                </button>
+            </div>
+
             <h2 className="text-2xl font-bold mb-6">Mis Productos</h2>
-            {productos.length === 0 ? (
+            {productosActivos.length === 0 ? (
                 <div className="card text-center py-12 text-gray-500">
-                    Aún no tienes productos publicados. ¡Anímate a subir el primero!
+                    Aún no tienes productos activos publicados. ¡Anímate a subir el primero!
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {productos.map((producto) => (
+            {productosActivos.map((producto) => (
                 <div key={producto.id_producto} className="card flex flex-col hover:shadow-lg transition-shadow">
                     <div className="h-48 bg-gray-200 -mx-6 -mt-6 mb-4 rounded-t-2xl overflow-hidden">
                         {obtenerImagenUrl(producto.fotos) ? (
@@ -259,24 +306,15 @@ const DashboardArtesano = () => {
                     </div>
 
                     <div className="flex gap-2">
-                        <Link to={`/productos/${producto.id_producto}`} className="flex-1 btn-secondary flex items-center justify-center gap-2 text-sm">
+                        <button onClick={() => abrirModalEditar(producto)} className="flex-1 btn-secondary flex items-center justify-center gap-2 text-sm font-bold">
                             <FaEdit /> Editar
-                        </Link>
-                        {producto.estado_producto === 'activo' && (
-                            <button
-                                onClick={() => handlePausarProducto(producto.id_producto)}
-                                disabled={procesandoID === producto.id_producto}
-                                className="flex-1 bg-yellow-500 text-white py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-yellow-600 transition disabled:opacity-50 text-sm font-bold"
-                            >
-                                <FaPause /> {procesandoID === producto.id_producto ? '...' : 'Pausar'}
-                            </button>
-                        )}
+                        </button>
                         <button
-                            onClick={() => handleEliminarProducto(producto.id_producto)}
+                            onClick={() => handlePausarProducto(producto.id_producto)}
                             disabled={procesandoID === producto.id_producto}
-                            className="flex-1 bg-red-600 text-white py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-red-700 transition disabled:opacity-50 text-sm font-bold"
+                            className="flex-1 bg-yellow-500 text-white py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-yellow-600 transition disabled:opacity-50 text-sm font-bold"
                         >
-                            <FaTrash /> {procesandoID === producto.id_producto ? '...' : 'Borrar'}
+                            <FaPause /> {procesandoID === producto.id_producto ? '...' : 'Pausar'}
                         </button>
                     </div>
                 </div>
@@ -365,6 +403,78 @@ const DashboardArtesano = () => {
                                 <button type="submit" disabled={subiendo} className="flex-1 bg-blue-600 text-white py-2 rounded-xl font-bold hover:bg-blue-700 shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
                                     {subiendo ? '⏳ Publicando...' : 'Publicar Producto'}
                                 </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* --- MODAL PRODUCTOS PAUSADOS --- */}
+            {mostrarModalPausados && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl max-h-[80vh] flex flex-col">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold">Productos Desactivados</h2>
+                            <button onClick={() => setMostrarModalPausados(false)} className="text-gray-500 hover:text-red-500 font-bold text-2xl">&times;</button>
+                        </div>
+
+                        <div className="overflow-y-auto flex-1 pr-2 space-y-3">
+                            {productos.filter(p => p.estado_producto !== 'activo').length === 0 ? (
+                                <p className="text-gray-500 text-center py-8">No tienes productos pausados.</p>
+                            ) : (
+                                productos.filter(p => p.estado_producto !== 'activo').map(p => (
+                                    <div key={p.id_producto} className="flex justify-between items-center p-4 border rounded-xl hover:bg-gray-50 transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            {obtenerImagenUrl(p.fotos) ? (
+                                                <img src={obtenerImagenUrl(p.fotos)} alt={p.titulo} className="w-16 h-16 object-cover rounded-lg" />
+                                            ) : (
+                                                <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center text-xs text-gray-500">Sin foto</div>
+                                            )}
+                                            <div>
+                                                <p className="font-bold text-lg">{p.titulo}</p>
+                                                <p className="text-sm text-gray-500">ID: {p.id_producto}</p>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            {p.estado_producto === 'pausado' ? (
+                                                <button onClick={() => handleReactivarProducto(p.id_producto)} disabled={procesandoID === p.id_producto} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition flex items-center gap-2 disabled:opacity-50">
+                                                    <FaPlay /> Reactivar
+                                                </button>
+                                            ) : (
+                                                <span className="bg-red-100 text-red-700 px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
+                                                    Bloqueado por Admin
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- MODAL EDITAR PRODUCTO --- */}
+            {mostrarModalEditar && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+                        <h2 className="text-2xl font-bold mb-4">Editar Producto</h2>
+                        <form onSubmit={handleGuardarEdicion} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold mb-1">Título</label>
+                                <input type="text" required value={formEditar.titulo} onChange={e => setFormEditar({...formEditar, titulo: e.target.value})} disabled={guardandoEdicion} className="w-full border rounded px-3 py-2 disabled:opacity-50" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold mb-1">Precio (COP)</label>
+                                <input type="number" required min="1" value={formEditar.precio} onChange={e => setFormEditar({...formEditar, precio: e.target.value})} disabled={guardandoEdicion} className="w-full border rounded px-3 py-2 disabled:opacity-50" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold mb-1">Descripción</label>
+                                <textarea required value={formEditar.descripcion} onChange={e => setFormEditar({...formEditar, descripcion: e.target.value})} disabled={guardandoEdicion} className="w-full border rounded px-3 py-2 disabled:opacity-50" rows="4"></textarea>
+                            </div>
+                            <div className="flex gap-2 mt-6 pt-4 border-t">
+                                <button type="button" onClick={() => setMostrarModalEditar(false)} disabled={guardandoEdicion} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">Cancelar</button>
+                                <button type="submit" disabled={guardandoEdicion} className="flex-1 bg-yellow-500 text-white py-2 rounded-xl font-bold hover:bg-yellow-600 transition-colors shadow-md disabled:opacity-50">{guardandoEdicion ? 'Guardando...' : 'Guardar Cambios'}</button>
                             </div>
                         </form>
                     </div>

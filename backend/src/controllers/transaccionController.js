@@ -19,9 +19,9 @@ const crearTransaccion = async (req, res) => {
         // Obtener producto (Le quitamos la regla de 'eliminado' que no existe)
         const [productos] = await connection.query('SELECT * FROM productos WHERE id_producto = ?', [id_producto]);
         
-        if (productos.length === 0 || productos[0].cantidad_disponible < cantidad) {
+        if (productos.length === 0 || productos[0].estado_producto !== 'activo' || productos[0].cantidad_disponible < cantidad) {
             connection.release();
-            return res.status(400).json({ success: false, message: 'Producto no disponible o stock insuficiente' });
+            return res.status(400).json({ success: false, message: 'Producto no disponible, pausado o stock insuficiente' });
         }
 
         const producto = productos[0];

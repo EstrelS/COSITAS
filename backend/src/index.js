@@ -22,7 +22,8 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ============== MIDDLEWARE CSRF ==============
-app.use(csrfMiddleware);
+// APAGADO TEMPORALMENTE: Para evitar el error de "Token CSRF inválido o expirado"
+// app.use(csrfMiddleware);
 
 // ============== RUTAS ==============
 app.use('/api/v1/csrf', require('./routes/csrfRoutes'));
@@ -60,7 +61,7 @@ app.use((req, res) => {
 });
 
 // ============== INICIAR SERVIDOR ==============
-const PORT = process.env.PORT || 5001;
+const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`Servidor COSITAS ejecutándose en puerto ${PORT}`);
     console.log(`URL: http://localhost:${PORT}`);

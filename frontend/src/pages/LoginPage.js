@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../config/axiosConfig';
 import authStore from '../store/authStore';
-import CryptoJS from 'crypto-js'; // <-- PASO 1: Importamos CryptoJS
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -15,15 +14,14 @@ const LoginPage = () => {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      // <-- PASO 2: Encriptamos la contraseña usando la clave secreta (CORREGIDO PARA CREATE REACT APP)
-      const claveSecreta = process.env.REACT_APP_AES_SECRET_KEY || 'MiClaveSecretaSuperSegura2026';
-      const passwordEncriptado = CryptoJS.AES.encrypt(password, claveSecreta).toString();
+    // FIX AUTOCOMPLETADO: Leer los valores directamente de la pantalla
+    const emailReal = document.querySelector('input[type="email"]').value;
+    const passwordReal = document.querySelector('input[type="password"]').value;
 
-      // <-- PASO 3: Enviamos la contraseña encriptada al backend
+    try {
       const response = await axiosInstance.post('/auth/login', {
-        email,
-        password: passwordEncriptado 
+        email: emailReal,
+        password: passwordReal
       });
 
       localStorage.setItem('token', response.data.token);
@@ -41,8 +39,9 @@ const LoginPage = () => {
       }
     } catch (err) {
       console.error('Error completo en login:', err);
+      const mensajeReal = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Error al conectar con el servidor.';
       // Alerta nativa para ver el error real en pantalla
-      alert(err.response?.data?.message || 'Error al iniciar sesión. Verifica el backend.');
+      alert(mensajeReal);
     } finally {
       setLoading(false);
     }

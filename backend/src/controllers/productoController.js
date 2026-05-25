@@ -117,16 +117,17 @@ const crearProducto = async (req, res) => {
 const obtenerProductos = async (req, res) => {
     let connection;
     try {
-        const { categoria, busqueda, vendedor } = req.query;
+        const { categoria, busqueda, vendedor, incluir_inactivos } = req.query;
         connection = await pool.getConnection();
+        let estadoCondition = incluir_inactivos === 'true' ? '1=1' : 'p.estado_producto = "activo"';
         let query = `
-            SELECT p.*, 
+            SELECT p.*, p.decripcion AS descripcion,
                    (SELECT COALESCE(AVG(c.puntiacion), 0) 
                     FROM calificaciones c 
                     JOIN transacciones t ON c.id_transaccion = t.id_transacciones 
                     WHERE t.id_producto = p.id_producto) AS calificacion_promedio
             FROM productos p 
-            WHERE p.estado_producto = "activo"
+            WHERE ${estadoCondition}
         `;
         const params = [];
         if (categoria) { query += ' AND p.id_categoria = ?'; params.push(categoria); }
@@ -148,7 +149,7 @@ const obtenerProductoId = async (req, res) => {
         const { id } = req.params;
         connection = await pool.getConnection();
         const [productos] = await connection.query(`
-            SELECT p.*, 
+            SELECT p.*, p.decripcion AS descripcion,
                    (SELECT COALESCE(AVG(c.puntiacion), 0) 
                     FROM calificaciones c 
                     JOIN transacciones t ON c.id_transaccion = t.id_transacciones 
@@ -227,7 +228,7 @@ const actualizarProducto = async (req, res) => {
         }
 
         if (descripcion !== undefined) {
-            updateQuery += 'descripcion = ?, ';
+            updateQuery += 'decripcion = ?, ';
             updateValues.push(descripcion);
         }
 
@@ -250,7 +251,7 @@ const pausarProducto = async (req, res) => {
     try {
         const { id } = req.params;
         const connection = await pool.getConnection();
-        await connection.query('UPDATE productos SET estado_producto = "suspendido" WHERE id_producto = ?', [id]);
+        await connection.query('UPDATE productos SET estado_producto = "pausado" WHERE id_producto = ?', [id]);
         connection.release();
         res.json({ success: true, message: 'Producto dado de baja correctamente' });
     } catch (err) { 
@@ -266,6 +267,13 @@ const reactivarProducto = async (req, res) => {
         const { id } = req.params;
         const connection = await pool.getConnection();
         
+        // Verificación de seguridad: Evitar que el vendedor reactive un producto suspendido por el admin
+        const [prods] = await connection.query('SELECT estado_producto FROM productos WHERE id_producto = ?', [id]);
+        if (prods.length > 0 && prods[0].estado_producto === 'suspendido') {
+            connection.release();
+            return res.status(403).json({ success: false, message: 'Este producto fue suspendido por un Administrador y no puede ser reactivado.' });
+        }
+
         const [result] = await connection.query(
             'UPDATE productos SET estado_producto = "activo" WHERE id_producto = ?', 
             [id]
