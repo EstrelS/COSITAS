@@ -85,21 +85,54 @@ const crearProducto = async (req, res) => {
         connection = await pool.getConnection();
         await connection.beginTransaction();
         
-        // Insertar producto
-        const [result] = await connection.query(
-            'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, fotos) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
-        );
+        let result;
+        try {
+            // Intento 1: Con decripcion y fotos
+            [result] = await connection.query(
+                'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, "activo")',
+                [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
+            );
+        } catch (e1) {
+            try {
+                // Intento 2: Con descripcion (bien escrito) y fotos
+                [result] = await connection.query(
+                    'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, "activo")',
+                    [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
+                );
+            } catch (e2) {
+                try {
+                    // Intento 3: Sin fotos y con decripcion
+                    [result] = await connection.query(
+                        'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, estado_producto) VALUES (?, ?, ?, ?, ?, ?, "activo")',
+                        [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria]
+                    );
+                } catch (e3) {
+                    // Intento 4: Sin fotos y con descripcion
+                    [result] = await connection.query(
+                        'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, estado_producto) VALUES (?, ?, ?, ?, ?, ?, "activo")',
+                        [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria]
+                    );
+                }
+            }
+        }
+
+        if (!result) {
+            throw new Error("La tabla productos no coincide con ninguna de las estructuras esperadas.");
+        }
         
         const id_producto = result.insertId;
         
         // Guardar cada foto en imagenes_producto (con orden)
         if (fotos && fotos.length > 0) {
             for (let i = 0; i < fotos.length; i++) {
-                await connection.query(
-                    'INSERT INTO imagenes_producto (id_producto, url_imagen, orden) VALUES (?, ?, ?)',
-                    [id_producto, fotos[i], i + 1]
-                );
+                try {
+                    await connection.query(
+                        'INSERT INTO imagenes_producto (id_producto, url_imagen, orden) VALUES (?, ?, ?)',
+                        [id_producto, fotos[i], i + 1]
+                    );
+                } catch (imgErr) {
+                    console.log('⚠️ Aviso: La tabla imagenes_producto no existe o dio error:', imgErr.message);
+                }
             }
         }
         
