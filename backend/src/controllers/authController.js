@@ -99,7 +99,7 @@ const login = async (req, res) => {
 
         const user = users[0];
         const token = jwt.sign(
-            { id_usuario: user.id_usuario, email: user.email, tipo_usuario: user.tipo_usuario },
+            { id_usuario: user.id_usuario, email: user.email, tipo_usuario: user.tipo_usuario, nombre: user.nombre },
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRATION || '24h' }
         );
@@ -119,7 +119,7 @@ const login = async (req, res) => {
 const obtenerUsuarios = async (req, res) => {
     try {
         const connection = await pool.getConnection();
-        const [usuarios] = await connection.query('SELECT id_usuario, nombre, email, tipo_usuario, fecha_registro FROM usuarios');
+        const [usuarios] = await connection.query('SELECT id_usuario, nombre, email, tipo_usuario, fecha_registro, eliminado FROM usuarios');
         connection.release();
 
         res.json({ success: true, usuarios });

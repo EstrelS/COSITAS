@@ -18,7 +18,7 @@ router.get('/:id', async (req, res) => {
         const connection = await pool.getConnection();
         
         const [artesanos] = await connection.query(
-        'SELECT pa.*, u.nombre, u.calificacion_promedio, u.foto_perfil_url, u.verificado FROM perfil_artesano pa JOIN usuarios u ON pa.id_usuario = u.id_usuario WHERE pa.id_artesano = ? AND pa.eliminado = FALSE',
+        'SELECT pa.*, u.nombre, u.calificacion_promedio, u.foto_perfil_url, u.verificado FROM perfil_artesano pa JOIN usuarios u ON pa.id_usuario = u.id_usuario WHERE pa.id_usuario = ? AND pa.eliminado = FALSE',
         [id]
         );
         

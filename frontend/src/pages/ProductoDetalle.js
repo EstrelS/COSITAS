@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { FaComments, FaHeart, FaRegHeart, FaShoppingCart, FaStar } from 'react-icons/fa';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../config/axiosConfig';
 import authStore from '../store/authStore';
 
 const ProductoDetalle = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [producto, setProducto] = useState(null);
   const [calificaciones, setCalificaciones] = useState([]);
   const [esReferencia, setEsReferencia] = useState(false);
@@ -36,173 +37,185 @@ const ProductoDetalle = () => {
     }
   };
 
-  const handleAgregarFavorito = async () => {
-    if (!isAuthenticated) {
-      toast.error('Debes iniciar sesión');
-      return;
-    }
+  // Lógica de Suspensión
+  const handleDarDeBaja = async () => {
+    try {
+      await axiosInstance.patch(`/admin/productos/${id}/suspender`);
+      toast.success('Producto dado de baja');
+      fetchProducto();
+    } catch (err) { toast.error('Error al suspender'); }
+  };
 
+  // Lógica de Reactivación
+  const handleReactivar = async () => {
+    try {
+      await axiosInstance.patch(`/admin/productos/${id}/reactivar`);
+      toast.success('Producto reactivado');
+      fetchProducto();
+    } catch (err) { toast.error('Error al reactivar'); }
+  };
+
+  // Lógica para herramientas del Vendedor
+  const handlePausar = async () => {
+    try {
+      await axiosInstance.patch(`/productos/${id}/pausar`);
+      toast.success('Producto pausado correctamente');
+      fetchProducto(); // Recarga para actualizar el estado visual
+    } catch (err) { toast.error('Error al pausar el producto'); }
+  };
+
+  const handleAgregarCarrito = async () => {
+    if (!isAuthenticated) return toast.error('Inicia sesión para comprar');
+    try {
+      await axiosInstance.post('/carrito', { id_producto: id, cantidad });
+      toast.success('Producto agregado al carrito');
+    } catch (err) {
+      toast.error('Error al agregar al carrito');
+    }
+  };
+
+  const handleAgregarFavorito = async () => {
+    if (!isAuthenticated) return toast.error('Inicia sesión para agregar a favoritos');
     try {
       await axiosInstance.post('/favoritos', { id_producto: id });
-      setEsReferencia(true);
-      toast.success('Agregado a favoritos');
+      toast.success('Agregado a favoritos exitosamente');
     } catch (err) {
-      toast.error('Error al agregar a favoritos');
+      toast.error('Error al agregar a favoritos (quizás ya lo tienes)');
     }
   };
 
-  const handleComprar = async () => {
-    if (!isAuthenticated) {
-      toast.error('Debes iniciar sesión');
-      return;
-    }
-
+  const handleComprarAhora = async () => {
+    if (!isAuthenticated) return toast.error('Inicia sesión para comprar');
     try {
-      await axiosInstance.post('/transacciones', {
-        id_producto: id,
-        cantidad
-      });
-      toast.success('Compra realizada');
+      await axiosInstance.post('/carrito', { id_producto: id, cantidad });
+      navigate('/carrito'); // Redirige directamente al carrito para proceder al pago
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error en la compra');
+      toast.error('Error al procesar la compra');
     }
   };
 
-  const handleAgregarCarrito = () => {
-    toast.success('Producto añadido al carrito (Módulo en desarrollo)');
-  };
-
-  const handleContactarArtesano = async () => {
-    if (!isAuthenticated) {
-      toast.error('Debes iniciar sesión');
-      return;
-    }
-
-    try {
-      await axiosInstance.post('/conversaciones', {
-        id_usuario_2: producto.id_vendedor,
-        id_producto_relacionado: id
-      });
-      toast.success('Conversación creada');
-    } catch (err) {
-      toast.error('Error al crear conversación');
-    }
-  };
-
-  if (!producto) {
-    return <div className="container text-center py-12">Cargando...</div>;
-  }
+  if (!producto) return <div className="container text-center py-12">Cargando...</div>;
 
   const fotos = typeof producto.fotos === 'string' ? JSON.parse(producto.fotos) : producto.fotos || [];
 
   return (
     <div className="container py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Imagen */}
         <div>
           <div className="bg-gray-200 h-96 rounded-lg overflow-hidden flex items-center justify-center">
-            {fotos.length > 0 ? (
-              <img src={fotos[0]} alt={producto.titulo} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-gray-400">Sin imagen</span>
-            )}
+            {fotos.length > 0 ? <img src={fotos[0]} alt={producto.titulo} className="w-full h-full object-cover" /> : <span className="text-gray-400">Sin imagen</span>}
           </div>
         </div>
 
-        {/* Detalles */}
         <div>
           <h1 className="text-4xl font-bold mb-4">{producto.titulo}</h1>
-          
           <div className="flex items-center gap-4 mb-4">
             <div className="flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (
-                <FaStar key={i} className={i < Math.round(producto.calificacion_promedio) ? 'text-yellow-400' : 'text-gray-300'} />
-              ))}
+              {[...Array(5)].map((_, i) => <FaStar key={i} className={i < Math.round(producto.calificacion_promedio || 0) ? 'text-yellow-400' : 'text-gray-300'} />)}
             </div>
-            <span className="text-gray-600">{producto.calificacion_promedio || 0} estrellas</span>
+            <span className="font-bold text-gray-700">{Number(producto.calificacion_promedio || 0).toFixed(1)} estrellas</span>
           </div>
-
-          <p className="text-gray-600 text-lg mb-4">{producto.descripcion}</p>
-
+          
           <div className="bg-blue-50 p-4 rounded-lg mb-4">
             <p className="text-3xl font-bold text-blue-600">${producto.precio}</p>
-            <p className="text-sm text-gray-600">Stock disponible: {producto.cantidad_disponible}</p>
+            <p className="text-sm">Estado: {producto.estado_producto}</p>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <label className="font-bold">Cantidad:</label>
-              <input
-                type="number"
-                min="1"
-                max={producto.cantidad_disponible}
-                value={cantidad}
-                onChange={(e) => setCantidad(parseInt(e.target.value))}
-                className="input-field w-24"
-              />
-            </div>
-
+          {/* Lógica de botones Admin */}
+          {usuario?.tipo_usuario === 'administrador' && (
             <div className="flex flex-col gap-2">
-                <button
-                    onClick={handleComprar}
-                    className="w-full btn-primary"
-                >
-                    Comprar Ahora
-                </button>
-                <div className="flex gap-4">
-                    <button
-                        onClick={handleAgregarCarrito}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-100 text-blue-800 hover:bg-blue-200"
-                    >
-                        <FaShoppingCart /> Añadir al Carrito
-                    </button>
-                    <button
-                        onClick={handleAgregarFavorito}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg ${
-                        esReferencia
-                            ? 'bg-red-600 text-white hover:bg-red-700'
-                            : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                        }`}
-                    >
-                        {esReferencia ? <FaHeart /> : <FaRegHeart />} Favorito
-                    </button>
-                </div>
+              {producto.estado_producto === 'suspendido' ? (
+                <button onClick={handleReactivar} className="w-full bg-green-600 text-white py-2 rounded-lg font-bold">Reactivar Producto</button>
+              ) : (
+                <button onClick={handleDarDeBaja} className="w-full bg-red-600 text-white py-2 rounded-lg font-bold">Dar de baja</button>
+              )}
+              <button className="w-full bg-yellow-500 text-white py-2 rounded-lg font-bold">Editar información</button>
             </div>
+          )}
+          
+          {/* Herramientas exclusivas del Vendedor (creador del producto) */}
+          {usuario?.id_usuario === producto.id_vendedor && (
+            <div className="mt-6 flex flex-col gap-3 border-t pt-4">
+              <p className="text-gray-600 font-bold mb-2">Tus herramientas de vendedor:</p>
+              <div className="flex gap-2">
+                <button onClick={() => navigate('/dashboard/artesano')} className="flex-1 bg-yellow-500 text-white py-2 rounded-lg font-bold hover:bg-yellow-600 transition shadow">
+                  Modificar en Panel
+                </button>
+                {producto.estado_producto === 'activo' && (
+                  <button onClick={handlePausar} className="flex-1 bg-orange-500 text-white py-2 rounded-lg font-bold hover:bg-orange-600 transition shadow">
+                    Pausar Producto
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
-            <button
-              onClick={handleContactarArtesano}
-              className="w-full btn-secondary flex items-center justify-center gap-2"
-            >
-              <FaComments /> Contactar Artesano
-            </button>
+          {/* Descripción del producto */}
+          <div className="mt-6">
+            <h2 className="text-xl font-bold mb-2">Descripción</h2>
+            <div className="bg-white p-4 rounded-xl border shadow-sm text-gray-700 whitespace-pre-line leading-relaxed">
+              {producto.descripcion || 'Sin descripción disponible.'}
+            </div>
           </div>
+
+          {/* Acciones de compra (sólo para compradores o invitados, no para el creador del producto) */}
+          {usuario?.tipo_usuario !== 'administrador' && usuario?.id_usuario !== producto.id_vendedor && (
+            <div className="mt-8 space-y-4 border-t pt-6">
+              <div className="flex items-center gap-4">
+                <label className="font-bold text-gray-700">Cantidad:</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max={producto.cantidad_disponible || 1}
+                  value={cantidad}
+                  onChange={(e) => setCantidad(Number(e.target.value))}
+                  className="border rounded px-4 py-2 w-24 bg-gray-50 focus:bg-white"
+                />
+                <span className="text-sm text-gray-500">
+                  ({producto.cantidad_disponible} disponibles)
+                </span>
+              </div>
+              
+              <div className="flex gap-4">
+                <button onClick={handleAgregarCarrito} className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-xl font-bold hover:from-blue-600 hover:to-blue-700 shadow-md flex justify-center items-center gap-2 transition-all">
+                  <FaShoppingCart /> Agregar al Carrito
+                </button>
+                <button onClick={handleAgregarFavorito} className="px-4 py-3 border-2 border-red-200 text-red-500 rounded-xl hover:bg-red-50 transition-colors flex items-center justify-center">
+                  <FaHeart className="text-2xl" />
+                </button>
+              </div>
+              <button onClick={handleComprarAhora} className="w-full mt-4 bg-gradient-to-r from-pink-500 to-orange-500 text-white py-3 rounded-xl font-bold hover:from-pink-600 hover:to-orange-600 shadow-md flex justify-center items-center transition-all">
+                Comprar Ahora
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Calificaciones */}
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold mb-6">Calificaciones</h2>
-        <div className="space-y-4">
-          {calificaciones.length > 0 ? (
-            calificaciones.map((cal) => (
-              <div key={cal.id_calificacion} className="card">
+      {/* Sección de Comentarios y Reseñas */}
+      <div className="mt-16 border-t pt-8">
+        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <FaComments className="text-gray-400" /> Opiniones del Producto
+        </h2>
+        {calificaciones.length === 0 ? (
+          <div className="bg-gray-50 rounded-xl p-8 text-center text-gray-500">
+            Aún no hay opiniones para este producto. ¡Sé el primero en comprarlo y dejar una reseña!
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {calificaciones.map((cal, idx) => (
+              <div key={idx} className="bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <p className="font-bold">{cal.nombre}</p>
-                    <div className="flex items-center gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <FaStar key={i} className={i < cal.puntuacion ? 'text-yellow-400' : 'text-gray-300'} />
-                      ))}
-                    </div>
+                  <span className="font-bold text-gray-800">{cal.nombre_comprador || cal.nombre || 'Comprador verificado'}</span>
+                  <div className="flex text-yellow-400 text-sm">
+                    {[...Array(5)].map((_, i) => <FaStar key={i} className={i < (cal.calificacion || cal.puntiacion || 5) ? 'text-yellow-400' : 'text-gray-300'} />)}
                   </div>
                 </div>
-                <p className="text-gray-700">{cal.comentario}</p>
+                <p className="text-gray-600 text-sm mt-2">{cal.comentario}</p>
               </div>
-            ))
-          ) : (
-            <p className="text-gray-500">No hay calificaciones aún</p>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react';
 import { FaComments, FaFacebook, FaInstagram, FaStar } from 'react-icons/fa';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import axiosInstance from '../config/axiosConfig';
+import authStore from '../store/authStore';
 
 const PerfilArtesano = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated } = authStore();
   const [artesano, setArtesano] = useState(null);
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [iniciandoChat, setIniciandoChat] = useState(false);
 
   useEffect(() => {
     fetchArtesano();
@@ -33,6 +38,37 @@ const PerfilArtesano = () => {
       setProductos(response.data.productos || []);
     } catch (err) {
       console.error('Error fetching productos:', err);
+    }
+  };
+
+  const obtenerImagenUrl = (fotos) => {
+    if (!fotos) return '';
+    if (typeof fotos === 'string') {
+        if (fotos.startsWith('[') && fotos.endsWith(']')) {
+            try { return JSON.parse(fotos)[0] || ''; } catch (e) { return fotos; }
+        }
+        return fotos;
+    }
+    if (Array.isArray(fotos)) return fotos[0] || '';
+    return '';
+  };
+
+  const handleCrearChat = async () => {
+    if (!isAuthenticated) {
+      toast.error('Debes iniciar sesión para contactar al artesano');
+      return;
+    }
+    if (iniciandoChat) return;
+    setIniciandoChat(true);
+    try {
+      const res = await axiosInstance.post('/conversaciones', {
+        id_usuario_2: id
+      });
+      navigate(`/chat/${res.data.id_conversacion}`);
+    } catch (err) {
+      toast.error('Error al iniciar el chat');
+    } finally {
+      setIniciandoChat(false);
     }
   };
 
@@ -74,9 +110,9 @@ const PerfilArtesano = () => {
                   <p className="text-blue-600 font-bold">✓ Verificado</p>
                 )}
               </div>
-              <Link to={`/chat`} className="btn-primary flex items-center gap-2">
-                <FaComments /> Contactar
-              </Link>
+              <button onClick={handleCrearChat} disabled={iniciandoChat} className="btn-primary flex items-center gap-2 disabled:opacity-50">
+                <FaComments /> {iniciandoChat ? 'Cargando...' : 'Contactar'}
+              </button>
             </div>
 
             <div className="flex items-center gap-2 mb-4">
@@ -121,15 +157,15 @@ const PerfilArtesano = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {productos.map((producto) => (
           <Link key={producto.id_producto} to={`/productos/${producto.id_producto}`}>
-            <div className="card hover:shadow-lg transition">
-              <div className="w-full h-48 bg-gray-200 rounded mb-4 overflow-hidden">
-                {producto.fotos && JSON.parse(typeof producto.fotos === 'string' ? producto.fotos : '[""]')[0] ? (
-                  <img src={JSON.parse(typeof producto.fotos === 'string' ? producto.fotos : '[""]')[0]} alt={producto.nombre} className="w-full h-full object-cover" />
+            <div className="card hover:shadow-lg transition h-full flex flex-col">
+              <div className="w-full h-48 bg-gray-200 -mx-6 -mt-6 mb-4 rounded-t-2xl overflow-hidden">
+                {obtenerImagenUrl(producto.fotos) ? (
+                  <img src={obtenerImagenUrl(producto.fotos)} alt={producto.titulo} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">Sin imagen</div>
                 )}
               </div>
-              <h3 className="font-bold text-lg mb-2 truncate">{producto.nombre}</h3>
+              <h3 className="font-bold text-lg mb-2 mt-2 truncate">{producto.titulo}</h3>
               <p className="text-2xl font-bold text-blue-600">${producto.precio}</p>
             </div>
           </Link>
