@@ -283,10 +283,13 @@ const actualizarProducto = async (req, res) => {
 const pausarProducto = async (req, res) => {
     try {
         const { id } = req.params;
+        // Si el que hace la petición es administrador, lo "suspende", si es artesano lo "pausa"
+        const estado = req.user.tipo_usuario === 'administrador' ? 'suspendido' : 'pausado';
+        
         const connection = await pool.getConnection();
-        await connection.query('UPDATE productos SET estado_producto = "pausado" WHERE id_producto = ?', [id]);
+        await connection.query('UPDATE productos SET estado_producto = ? WHERE id_producto = ?', [estado, id]);
         connection.release();
-        res.json({ success: true, message: 'Producto dado de baja correctamente' });
+        res.json({ success: true, message: `Producto ${estado} correctamente` });
     } catch (err) { 
         console.error("Error en pausarProducto:", err);
         res.status(500).json({ success: false, message: err.message }); 
@@ -301,10 +304,12 @@ const reactivarProducto = async (req, res) => {
         const connection = await pool.getConnection();
         
         // Verificación de seguridad: Evitar que el vendedor reactive un producto suspendido por el admin
-        const [prods] = await connection.query('SELECT estado_producto FROM productos WHERE id_producto = ?', [id]);
-        if (prods.length > 0 && prods[0].estado_producto === 'suspendido') {
-            connection.release();
-            return res.status(403).json({ success: false, message: 'Este producto fue suspendido por un Administrador y no puede ser reactivado.' });
+        if (req.user.tipo_usuario !== 'administrador') {
+            const [prods] = await connection.query('SELECT estado_producto FROM productos WHERE id_producto = ?', [id]);
+            if (prods.length > 0 && prods[0].estado_producto === 'suspendido') {
+                connection.release();
+                return res.status(403).json({ success: false, message: 'Este producto fue suspendido por un Administrador y no puede ser reactivado.' });
+            }
         }
 
         const [result] = await connection.query(
