@@ -87,7 +87,7 @@ const crearProducto = async (req, res) => {
         
         // Insertar producto
         const [result] = await connection.query(
-            'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, fotos) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, fotos) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
         );
         
