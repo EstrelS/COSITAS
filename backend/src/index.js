@@ -12,7 +12,7 @@ const app = express();
 // ============== MIDDLEWARES DE SEGURIDAD ==============
 app.use(helmet());
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: [process.env.FRONTEND_URL || 'http://localhost:3000', 'http://localhost:3001'],
     credentials: true
 }));
 
@@ -42,6 +42,7 @@ app.use('/api/v1/reportes', require('./routes/reporteRoutes'));
 app.use('/api/v1/ubicaciones', require('./routes/ubicacionRoutes'));
 app.use('/api/v1/busqueda', require('./routes/busquedaRoutes'));
 app.use('/api/v1/admin', require('./routes/adminRoutes'));
+app.use('/api/v1/upload', require('./routes/uploadRoutes'));
 
 // ============== MANEJO DE ERRORES ==============
 app.use((err, req, res, next) => {

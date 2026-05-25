@@ -17,6 +17,9 @@ const DashboardArtesano = () => {
     const [categorias, setCategorias] = useState([]);
     const [mostrarModalProducto, setMostrarModalProducto] = useState(false);
     const [formProducto, setFormProducto] = useState({ titulo: '', precio: '', cantidad_disponible: 1, descripcion: '', id_categoria: '' });
+    const [fotosSeleccionadas, setFotosSeleccionadas] = useState([]);
+    const [previews, setPreviews] = useState([]);
+    const [subiendo, setSubiendo] = useState(false);
 
     const [mostrarModalPerfil, setMostrarModalPerfil] = useState(false);
     const [formPerfil, setFormPerfil] = useState({ especialidad: '', descripcion: '', años_experiencia: 0 });
@@ -79,16 +82,57 @@ const DashboardArtesano = () => {
         }
     };
 
+    const handleFotosChange = (e) => {
+        const archivos = Array.from(e.target.files);
+        setFotosSeleccionadas(archivos);
+        
+        const newPreviews = archivos.map(archivo => {
+            const reader = new FileReader();
+            return new Promise((resolve) => {
+                reader.onload = (event) => resolve(event.target.result);
+                reader.readAsDataURL(archivo);
+            });
+        });
+        
+        Promise.all(newPreviews).then(setPreviews);
+    };
+
     const handleCrearProducto = async (e) => {
         e.preventDefault();
+        setSubiendo(true);
         try {
-            await axiosInstance.post('/productos', formProducto);
+            let urlsFotos = [];
+            
+            // Si hay fotos, subirlas primero
+            if (fotosSeleccionadas.length > 0) {
+                const formData = new FormData();
+                fotosSeleccionadas.forEach(foto => formData.append('fotos', foto));
+                
+                try {
+                    const resUpload = await axiosInstance.post('/upload', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    urlsFotos = resUpload.data.urls || [];
+                } catch (uploadErr) {
+                    toast.error('Error al subir fotos');
+                    setSubiendo(false);
+                    return;
+                }
+            }
+            
+            // Crear producto con las URLs de fotos
+            const productoData = { ...formProducto, fotos: urlsFotos };
+            await axiosInstance.post('/productos', productoData);
             toast.success('Producto publicado exitosamente');
             setMostrarModalProducto(false);
             fetchProductos();
             setFormProducto({ titulo: '', precio: '', cantidad_disponible: 1, descripcion: '', id_categoria: categorias[0]?.id_categoria || '' });
+            setFotosSeleccionadas([]);
+            setPreviews([]);
         } catch (err) {
             toast.error(err.response?.data?.errors?.[0] || 'Error al crear producto');
+        } finally {
+            setSubiendo(false);
         }
     };
 
@@ -275,23 +319,52 @@ const DashboardArtesano = () => {
 
             {/* --- MODAL NUEVO PRODUCTO --- */}
             {mostrarModalProducto && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="bg-white rounded-2xl p-6 max-w-2xl w-full my-8">
                         <h2 className="text-2xl font-bold mb-4">Agregar Nuevo Producto</h2>
                         <form onSubmit={handleCrearProducto} className="space-y-4">
-                            <input type="text" placeholder="Título del producto" required value={formProducto.titulo} onChange={e => setFormProducto({...formProducto, titulo: e.target.value})} className="w-full border rounded px-3 py-2" />
-                            <input type="number" placeholder="Precio (COP)" required min="1" value={formProducto.precio} onChange={e => setFormProducto({...formProducto, precio: e.target.value})} className="w-full border rounded px-3 py-2" />
-                            <input type="number" placeholder="Cantidad disponible" required min="1" value={formProducto.cantidad_disponible} onChange={e => setFormProducto({...formProducto, cantidad_disponible: e.target.value})} className="w-full border rounded px-3 py-2" />
-                            <textarea placeholder="Descripción del producto" required value={formProducto.descripcion} onChange={e => setFormProducto({...formProducto, descripcion: e.target.value})} className="w-full border rounded px-3 py-2" rows="3"></textarea>
+                            {/* FOTOS - NUEVA SECCIÓN */}
+                            <div className="border-2 border-dashed border-blue-300 rounded-xl p-4 bg-blue-50">
+                                <label className="block font-bold text-gray-700 mb-2">📸 Fotos del Producto (Máx. 10)</label>
+                                <input 
+                                    type="file" 
+                                    multiple 
+                                    accept="image/*" 
+                                    onChange={handleFotosChange}
+                                    disabled={subiendo}
+                                    className="w-full border rounded px-3 py-2 bg-white cursor-pointer hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                                {fotosSeleccionadas.length > 0 && <p className="text-xs text-gray-600 mt-1">{fotosSeleccionadas.length} imagen(es) seleccionada(s)</p>}
+                            </div>
+
+                            {/* PREVISUALIZACIONES */}
+                            {previews.length > 0 && (
+                                <div className="grid grid-cols-3 gap-2">
+                                    {previews.map((preview, idx) => (
+                                        <div key={idx} className="relative rounded-lg overflow-hidden bg-gray-100">
+                                            <img src={preview} alt={`Preview ${idx}`} className="w-full h-20 object-cover" />
+                                            <span className="absolute top-1 right-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">{idx + 1}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* OTROS CAMPOS */}
+                            <input type="text" placeholder="Título del producto" required value={formProducto.titulo} onChange={e => setFormProducto({...formProducto, titulo: e.target.value})} disabled={subiendo} className="w-full border rounded px-3 py-2 disabled:opacity-50" />
+                            <input type="number" placeholder="Precio (COP)" required min="1" value={formProducto.precio} onChange={e => setFormProducto({...formProducto, precio: e.target.value})} disabled={subiendo} className="w-full border rounded px-3 py-2 disabled:opacity-50" />
+                            <input type="number" placeholder="Cantidad disponible" required min="1" value={formProducto.cantidad_disponible} onChange={e => setFormProducto({...formProducto, cantidad_disponible: e.target.value})} disabled={subiendo} className="w-full border rounded px-3 py-2 disabled:opacity-50" />
+                            <textarea placeholder="Descripción del producto" required value={formProducto.descripcion} onChange={e => setFormProducto({...formProducto, descripcion: e.target.value})} disabled={subiendo} className="w-full border rounded px-3 py-2 disabled:opacity-50" rows="3"></textarea>
                             
-                            <select required value={formProducto.id_categoria} onChange={e => setFormProducto({...formProducto, id_categoria: e.target.value})} className="w-full border rounded px-3 py-2 bg-white">
+                            <select required value={formProducto.id_categoria} onChange={e => setFormProducto({...formProducto, id_categoria: e.target.value})} disabled={subiendo} className="w-full border rounded px-3 py-2 bg-white disabled:opacity-50">
                                 <option value="">Selecciona una categoría</option>
                                 {categorias.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre_categoria}</option>)}
                             </select>
 
                             <div className="flex gap-2 mt-4">
-                                <button type="button" onClick={() => setMostrarModalProducto(false)} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-50">Cancelar</button>
-                                <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded-xl font-bold hover:bg-blue-700 shadow-md">Publicar Producto</button>
+                                <button type="button" onClick={() => { setMostrarModalProducto(false); setFotosSeleccionadas([]); setPreviews([]); }} disabled={subiendo} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Cancelar</button>
+                                <button type="submit" disabled={subiendo} className="flex-1 bg-blue-600 text-white py-2 rounded-xl font-bold hover:bg-blue-700 shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {subiendo ? '⏳ Publicando...' : 'Publicar Producto'}
+                                </button>
                             </div>
                         </form>
                     </div>

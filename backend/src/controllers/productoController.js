@@ -46,6 +46,7 @@ const validarContenidoApropiado = (texto) => {
 };
 
 const crearProducto = async (req, res) => {
+    let connection;
     try {
         const { error, value } = productoSchema.validate(req.body);
         if (error) return res.status(400).json({ success: false, errors: error.details.map(d => d.message) });
@@ -81,16 +82,35 @@ const crearProducto = async (req, res) => {
         }
 
         const id_vendedor = req.user.id_usuario;
-        const connection = await pool.getConnection();
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        // Insertar producto
         const [result] = await connection.query(
-        'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, fotos) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
+            'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, fotos) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
         );
-        connection.release();
-        res.status(201).json({ success: true, message: 'Producto creado', id_producto: result.insertId });
+        
+        const id_producto = result.insertId;
+        
+        // Guardar cada foto en imagenes_producto (con orden)
+        if (fotos && fotos.length > 0) {
+            for (let i = 0; i < fotos.length; i++) {
+                await connection.query(
+                    'INSERT INTO imagenes_producto (id_producto, url_imagen, orden) VALUES (?, ?, ?)',
+                    [id_producto, fotos[i], i + 1]
+                );
+            }
+        }
+        
+        await connection.commit();
+        res.status(201).json({ success: true, message: 'Producto creado', id_producto });
     } catch (err) {
+        if (connection) await connection.rollback();
         console.error("Error en crearProducto:", err);
         res.status(500).json({ success: false, message: err.message });
+    } finally {
+        if (connection) connection.release();
     }
 };
 
