@@ -23,6 +23,11 @@ const DashboardArtesano = () => {
 
     const [mostrarModalPerfil, setMostrarModalPerfil] = useState(false);
     const [formPerfil, setFormPerfil] = useState({ especialidad: '', descripcion: '', años_experiencia: 0 });
+    
+    // Estados para la foto de perfil
+    const [fotoPerfil, setFotoPerfil] = useState(null);
+    const [previewPerfil, setPreviewPerfil] = useState('');
+    const [subiendoPerfil, setSubiendoPerfil] = useState(false);
 
     // Estados Editar Producto
     const [mostrarModalEditar, setMostrarModalEditar] = useState(false);
@@ -48,8 +53,10 @@ const DashboardArtesano = () => {
                 setFormPerfil({
                     especialidad: resPerf.data.artesano.especialidad || '',
                     descripcion: resPerf.data.artesano.descripcion || '',
-                    años_experiencia: resPerf.data.artesano.años_experiencia || 0
+                    años_experiencia: resPerf.data.artesano.años_experiencia || 0,
+                    foto_perfil_url: resPerf.data.artesano.foto_perfil_url || ''
                 });
+                setPreviewPerfil(resPerf.data.artesano.foto_perfil_url || '');
             }
         } catch (error) { console.error('Error al cargar datos adicionales'); }
     };
@@ -169,12 +176,33 @@ const DashboardArtesano = () => {
 
     const handleEditarPerfil = async (e) => {
         e.preventDefault();
+        setSubiendoPerfil(true);
         try {
-            await axiosInstance.put('/artesanos/perfil', formPerfil);
+            let urlFoto = formPerfil.foto_perfil_url;
+            
+            // Si el usuario seleccionó una imagen nueva, la subimos primero
+            if (fotoPerfil) {
+                const formData = new FormData();
+                formData.append('fotos', fotoPerfil); // Usamos 'fotos' porque así lo espera tu ruta /upload
+                
+                const resUpload = await axiosInstance.post('/upload', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                if (resUpload.data.urls && resUpload.data.urls.length > 0) {
+                    urlFoto = resUpload.data.urls[0];
+                }
+            }
+
+            const payload = { ...formPerfil, foto_perfil_url: urlFoto };
+            await axiosInstance.put('/artesanos/perfil', payload);
             toast.success('Información de perfil actualizada');
             setMostrarModalPerfil(false);
+            setFotoPerfil(null);
+            fetchCategoriasYPerfil(); // Recargamos para ver la foto nueva
         } catch (err) { 
             toast.error(err.response?.data?.errors?.[0] || err.response?.data?.message || 'Error al actualizar perfil'); 
+        } finally {
+            setSubiendoPerfil(false);
         }
     };
 
@@ -490,6 +518,23 @@ const DashboardArtesano = () => {
                         <h2 className="text-2xl font-bold mb-4">Editar Mi Perfil</h2>
                         <form onSubmit={handleEditarPerfil} className="space-y-4">
                             <div>
+                                <label className="block text-sm font-bold mb-1">Foto de Perfil</label>
+                                <div className="flex items-center gap-4">
+                                    {previewPerfil ? (
+                                        <img src={previewPerfil} alt="Preview" className="w-16 h-16 rounded-full object-cover border shadow-sm" />
+                                    ) : (
+                                        <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500 shadow-sm">Sin foto</div>
+                                    )}
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={(e) => { if(e.target.files[0]) { setFotoPerfil(e.target.files[0]); setPreviewPerfil(URL.createObjectURL(e.target.files[0])); } }} 
+                                        disabled={subiendoPerfil}
+                                        className="flex-1 border rounded px-3 py-2 text-sm bg-white cursor-pointer hover:bg-gray-50 disabled:opacity-50"
+                                    />
+                                </div>
+                            </div>
+                            <div>
                                 <label className="block text-sm font-bold mb-1">Especialidad</label>
                                 <input type="text" placeholder="Ej. Cerámica, Madera, Textiles..." value={formPerfil.especialidad} onChange={e => setFormPerfil({...formPerfil, especialidad: e.target.value})} className="w-full border rounded px-3 py-2" />
                             </div>
@@ -503,8 +548,10 @@ const DashboardArtesano = () => {
                             </div>
 
                             <div className="flex gap-2 mt-4">
-                                <button type="button" onClick={() => setMostrarModalPerfil(false)} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-50">Cancelar</button>
-                                <button type="submit" className="flex-1 bg-green-600 text-white py-2 rounded-xl font-bold hover:bg-green-700 shadow-md">Guardar Cambios</button>
+                                <button type="button" onClick={() => { setMostrarModalPerfil(false); setFotoPerfil(null); setPreviewPerfil(formPerfil.foto_perfil_url || ''); }} disabled={subiendoPerfil} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-50">Cancelar</button>
+                                <button type="submit" disabled={subiendoPerfil} className="flex-1 bg-green-600 text-white py-2 rounded-xl font-bold hover:bg-green-700 shadow-md disabled:opacity-50">
+                                    {subiendoPerfil ? '⏳ Guardando...' : 'Guardar Cambios'}
+                                </button>
                             </div>
                         </form>
                     </div>

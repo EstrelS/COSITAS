@@ -8,7 +8,8 @@ const perfilSchema = Joi.object({
     especialidad: Joi.string().allow('', null),
     descripcion: Joi.string().allow('', null),
     años_experiencia: Joi.number().integer().min(0).allow('', null),
-    redes_sociales: Joi.object()
+    redes_sociales: Joi.object(),
+    foto_perfil_url: Joi.string().allow('', null)
 });
 
 // Obtener perfil del artesano
@@ -54,6 +55,11 @@ router.put('/perfil', verifyToken, verifyRole('artesano'), async (req, res) => {
         [id_usuario, especialidad, descripcion, años_experiencia, JSON.stringify(redes_sociales), especialidad, descripcion, años_experiencia, JSON.stringify(redes_sociales)]
         );
         
+        // Si se envía una foto de perfil, actualizamos la tabla de usuarios
+        if (value.foto_perfil_url !== undefined) {
+            await connection.query('UPDATE usuarios SET foto_perfil_url = ? WHERE id_usuario = ?', [value.foto_perfil_url, id_usuario]);
+        }
+
         connection.release();
         res.json({ success: true, message: 'Perfil actualizado' });
     } catch (err) {
