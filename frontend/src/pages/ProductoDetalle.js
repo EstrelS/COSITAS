@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { FaComments, FaHeart, FaRegHeart, FaShoppingCart, FaStar } from 'react-icons/fa';
+import { FaComments, FaHeart, FaRegHeart, FaShoppingCart, FaStar, FaFlag, FaPlus } from 'react-icons/fa';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../config/axiosConfig';
 import authStore from '../store/authStore';
@@ -12,6 +12,7 @@ const ProductoDetalle = () => {
   const [calificaciones, setCalificaciones] = useState([]);
   const [esReferencia, setEsReferencia] = useState(false);
   const [cantidad, setCantidad] = useState(1);
+  const [esFavorito, setEsFavorito] = useState(false);
   const { usuario, isAuthenticated } = authStore();
 
   // Estados para el Modal de Editar (Admin)
@@ -19,10 +20,47 @@ const ProductoDetalle = () => {
   const [formEditar, setFormEditar] = useState({ titulo: '', precio: '', descripcion: '' });
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
+  // Estados para Modal de Reportes
+  const [mostrarModalReporte, setMostrarModalReporte] = useState(false);
+  const [formReporte, setFormReporte] = useState({ motivo: '', descripcion: '' });
+  const [enviandoReporte, setEnviandoReporte] = useState(false);
+
+  // Estados para Modal de Reseña (Solo compradores verificados)
+  const [transaccionPendiente, setTransaccionPendiente] = useState(null);
+  const [modalResena, setModalResena] = useState(false);
+  const [formResena, setFormResena] = useState({ calificacion: 5, comentario: '' });
+  const [enviandoResena, setEnviandoResena] = useState(false);
+
   useEffect(() => {
     fetchProducto();
     fetchCalificaciones();
-  }, [id]);
+    if (isAuthenticated) {
+      checkFavorito();
+      checkTransaccionPendiente();
+    }
+  }, [id, isAuthenticated]);
+
+  const checkFavorito = async () => {
+    try {
+      const res = await axiosInstance.get('/favoritos');
+      const favoritos = res.data.favoritos || [];
+      const enFavoritos = favoritos.some(fav => String(fav.id_producto) === String(id));
+      setEsFavorito(enFavoritos);
+    } catch (err) {
+      console.error('Error verificando favoritos:', err);
+    }
+  };
+
+  const checkTransaccionPendiente = async () => {
+    try {
+      const res = await axiosInstance.get('/transacciones');
+      const transacciones = res.data.transacciones || [];
+      const pendiente = transacciones.find(t => String(t.id_producto) === String(id) && t.ya_calificado === 0);
+      setTransaccionPendiente(pendiente || null);
+    } catch (err) {
+      console.error('Error verificando compras:', err);
+    }
+  };
 
   const fetchProducto = async () => {
     try {
@@ -104,13 +142,20 @@ const ProductoDetalle = () => {
     }
   };
 
-  const handleAgregarFavorito = async () => {
+  const handleToggleFavorito = async () => {
     if (!isAuthenticated) return toast.error('Inicia sesión para agregar a favoritos');
     try {
-      await axiosInstance.post('/favoritos', { id_producto: id });
-      toast.success('Agregado a favoritos exitosamente');
+      if (esFavorito) {
+        await axiosInstance.delete(`/favoritos/${id}`);
+        setEsFavorito(false);
+        toast.success('Producto eliminado de favoritos');
+      } else {
+        await axiosInstance.post('/favoritos', { id_producto: id });
+        setEsFavorito(true);
+        toast.success('Agregado a favoritos exitosamente');
+      }
     } catch (err) {
-      toast.error('Error al agregar a favoritos (quizás ya lo tienes)');
+      toast.error('Error al actualizar favoritos');
     }
   };
 
@@ -121,6 +166,51 @@ const ProductoDetalle = () => {
       navigate('/carrito'); // Redirige directamente al carrito para proceder al pago
     } catch (err) {
       toast.error('Error al procesar la compra');
+    }
+  };
+
+  const handleEnviarReporte = async (e) => {
+    e.preventDefault();
+    if (!isAuthenticated) return toast.error('Inicia sesión para reportar');
+    setEnviandoReporte(true);
+    try {
+      await axiosInstance.post('/reportes', {
+        id_producto_reportado: Number(id),
+        motivo_reporte: formReporte.motivo,
+        descripcion: formReporte.descripcion
+      });
+      toast.success('Reporte enviado a los administradores');
+      setMostrarModalReporte(false);
+      setFormReporte({ motivo: '', descripcion: '' });
+    } catch (err) {
+      const errorMsg = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Error al enviar el reporte';
+      toast.error(errorMsg);
+    } finally {
+      setEnviandoReporte(false);
+    }
+  };
+
+  const enviarResena = async (e) => {
+    e.preventDefault();
+    if (!formResena.comentario.trim()) {
+      toast.error('Por favor escribe tu opinión antes de publicar.');
+      return;
+    }
+    setEnviandoResena(true);
+    try {
+      await axiosInstance.post('/calificaciones', {
+        id_transaccion: transaccionPendiente.id_transacciones,
+        calificacion: Number(formResena.calificacion),
+        comentario: formResena.comentario
+      });
+      toast.success('¡Reseña publicada con éxito!');
+      setModalResena(false);
+      setTransaccionPendiente(null); // Ocultar el botón
+      fetchCalificaciones(); // Recargar las reseñas visualmente
+    } catch (err) {
+      toast.error(err.response?.data?.errors?.[0] || 'Error al publicar la reseña');
+    } finally {
+      setEnviandoResena(false);
     }
   };
 
@@ -211,12 +301,22 @@ const ProductoDetalle = () => {
                 <button onClick={handleAgregarCarrito} className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-xl font-bold hover:from-blue-600 hover:to-blue-700 shadow-md flex justify-center items-center gap-2 transition-all">
                   <FaShoppingCart /> Agregar al Carrito
                 </button>
-                <button onClick={handleAgregarFavorito} className="px-4 py-3 border-2 border-red-200 text-red-500 rounded-xl hover:bg-red-50 transition-colors flex items-center justify-center">
-                  <FaHeart className="text-2xl" />
+                <button onClick={handleToggleFavorito} className={`px-4 py-3 border-2 rounded-xl transition-colors flex items-center justify-center ${esFavorito ? 'border-red-200 text-red-500 hover:bg-red-50' : 'border-gray-200 text-gray-400 hover:bg-gray-50'}`}>
+                  {esFavorito ? <FaHeart className="text-2xl" /> : <FaRegHeart className="text-2xl" />}
                 </button>
               </div>
               <button onClick={handleComprarAhora} className="w-full mt-4 bg-gradient-to-r from-pink-500 to-orange-500 text-white py-3 rounded-xl font-bold hover:from-pink-600 hover:to-orange-600 shadow-md flex justify-center items-center transition-all">
                 Comprar Ahora
+              </button>
+
+              <button 
+                onClick={() => {
+                  if (!isAuthenticated) return toast.error('Inicia sesión para reportar');
+                  setMostrarModalReporte(true);
+                }} 
+                className="mt-4 w-full flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-red-500 transition-colors"
+              >
+                <FaFlag /> Reportar publicación
               </button>
             </div>
           )}
@@ -225,9 +325,16 @@ const ProductoDetalle = () => {
 
       {/* Sección de Comentarios y Reseñas */}
       <div className="mt-16 border-t pt-8">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <FaComments className="text-gray-400" /> Opiniones del Producto
-        </h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <FaComments className="text-gray-400" /> Opiniones del Producto
+          </h2>
+          {transaccionPendiente && (
+            <button onClick={() => setModalResena(true)} className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white px-4 py-2 rounded-lg shadow-md font-bold flex items-center gap-2 hover:from-yellow-500 hover:to-yellow-600 transition-all">
+              <FaPlus /> Añadir reseña
+            </button>
+          )}
+        </div>
         {calificaciones.length === 0 ? (
           <div className="bg-gray-50 rounded-xl p-8 text-center text-gray-500">
             Aún no hay opiniones para este producto. ¡Sé el primero en comprarlo y dejar una reseña!
@@ -270,6 +377,77 @@ const ProductoDetalle = () => {
               <div className="flex gap-2 mt-6 pt-4 border-t">
                 <button type="button" onClick={() => setMostrarModalEditar(false)} disabled={guardandoEdicion} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50">Cancelar</button>
                 <button type="submit" disabled={guardandoEdicion} className="flex-1 bg-yellow-500 text-white py-2 rounded-xl font-bold hover:bg-yellow-600 transition-colors shadow-md disabled:opacity-50">{guardandoEdicion ? 'Guardando...' : 'Guardar Cambios'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL PARA AÑADIR RESEÑA --- */}
+      {modalResena && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-bold mb-4 border-b pb-2">Calificar Producto</h2>
+            <p className="mb-4 text-gray-600">¿Qué te pareció <b>{producto.titulo}</b>?</p>
+            <form onSubmit={enviarResena} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold mb-1">Estrellas</label>
+                <select 
+                  value={formResena.calificacion} 
+                  onChange={(e) => setFormResena({...formResena, calificacion: e.target.value})}
+                  className="w-full border rounded px-3 py-2 bg-gray-50 focus:bg-white"
+                >
+                  <option value="5">⭐⭐⭐⭐⭐ (5) Excelente</option>
+                  <option value="4">⭐⭐⭐⭐ (4) Muy Bueno</option>
+                  <option value="3">⭐⭐⭐ (3) Bueno</option>
+                  <option value="2">⭐⭐ (2) Regular</option>
+                  <option value="1">⭐ (1) Malo</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-1">Tu reseña</label>
+                <textarea required placeholder="Escribe tu opinión sobre el producto..." value={formResena.comentario} onChange={(e) => setFormResena({...formResena, comentario: e.target.value})} className="w-full border rounded px-3 py-2 bg-gray-50 focus:bg-white" rows="4"></textarea>
+              </div>
+              <div className="flex gap-2 mt-6 pt-4 border-t">
+                <button type="button" onClick={() => setModalResena(false)} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-colors">Cancelar</button>
+                <button type="submit" disabled={enviandoResena} className="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-2 rounded-xl font-bold hover:from-yellow-500 hover:to-yellow-600 shadow-md disabled:opacity-50 transition-all">
+                  {enviandoResena ? 'Enviando...' : 'Publicar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL REPORTAR PRODUCTO --- */}
+      {mostrarModalReporte && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-red-600">
+              <FaFlag /> Reportar Producto
+            </h2>
+            <p className="mb-4 text-gray-600">¿Por qué deseas reportar este producto?</p>
+            <form onSubmit={handleEnviarReporte} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold mb-1">Motivo</label>
+                <select required value={formReporte.motivo} onChange={e => setFormReporte({...formReporte, motivo: e.target.value})} className="w-full border rounded px-3 py-2 bg-gray-50 focus:bg-white">
+                  <option value="">Selecciona un motivo...</option>
+                  <option value="Contenido inapropiado o prohibido">Contenido inapropiado o prohibido</option>
+                  <option value="Producto falso o estafa">Producto falso o estafa</option>
+                  <option value="No es un producto artesanal">No es un producto artesanal</option>
+                  <option value="Vendedor fraudulento">Vendedor fraudulento</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-1">Descripción</label>
+                <textarea required placeholder="Por favor, proporciona más detalles para ayudar al administrador..." value={formReporte.descripcion} onChange={e => setFormReporte({...formReporte, descripcion: e.target.value})} className="w-full border rounded px-3 py-2 bg-gray-50 focus:bg-white" rows="4"></textarea>
+              </div>
+              <div className="flex gap-2 mt-6 pt-4 border-t">
+                <button type="button" onClick={() => setMostrarModalReporte(false)} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-colors">Cancelar</button>
+                <button type="submit" disabled={enviandoReporte} className="flex-1 bg-red-600 text-white py-2 rounded-xl font-bold hover:bg-red-700 shadow-md disabled:opacity-50 transition-all">
+                  {enviandoReporte ? 'Enviando...' : 'Enviar Reporte'}
+                </button>
               </div>
             </form>
           </div>

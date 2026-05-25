@@ -1,14 +1,28 @@
 import { useEffect, useState } from 'react';
-import { FaBox, FaHeart, FaTrash, FaStar } from 'react-icons/fa';
+import { FaBox, FaHeart, FaTrash, FaStar, FaEdit, FaUserCircle, FaKey } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axiosInstance from '../config/axiosConfig';
+import authStore from '../store/authStore';
 
 const DashboardComprador = () => {
   const [transacciones, setTransacciones] = useState([]);
   const [favoritos, setFavoritos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [procesandoFavorito, setProcesandoFavorito] = useState(null);
+
+  // Estados para Edición de Perfil
+  const { usuario } = authStore();
+  const [mostrarModalPerfil, setMostrarModalPerfil] = useState(false);
+  const [formPerfil, setFormPerfil] = useState({ nombre: '', foto_perfil_url: '' });
+  const [fotoPerfil, setFotoPerfil] = useState(null);
+  const [previewPerfil, setPreviewPerfil] = useState('');
+  const [subiendoPerfil, setSubiendoPerfil] = useState(false);
+
+  // Estados para Cambiar Contraseña
+  const [mostrarModalPassword, setMostrarModalPassword] = useState(false);
+  const [formPassword, setFormPassword] = useState({ password_antigua: '', password_nueva: '' });
+  const [cambiandoPassword, setCambiandoPassword] = useState(false);
 
   // Estados para el Modal de Reseñas
   const [modalResena, setModalResena] = useState(false);
@@ -39,7 +53,45 @@ const DashboardComprador = () => {
       console.error('Error al cargar favoritos:', err);
     }
 
+    // 3. Pedir datos actuales del perfil para el modal
+    try {
+      const perfilRes = await axiosInstance.get('/usuarios/perfil');
+      if (perfilRes.data.usuario) {
+        setFormPerfil({
+          nombre: perfilRes.data.usuario.nombre || '',
+          foto_perfil_url: perfilRes.data.usuario.foto_perfil_url || ''
+        });
+        setPreviewPerfil(perfilRes.data.usuario.foto_perfil_url || '');
+      }
+    } catch (err) {
+      console.error('Error al cargar perfil:', err);
+    }
+
     setLoading(false);
+  };
+
+  const handleEditarPerfil = async (e) => {
+    e.preventDefault();
+    setSubiendoPerfil(true);
+    try {
+      let urlFoto = formPerfil.foto_perfil_url;
+      if (fotoPerfil) {
+        const formData = new FormData();
+        formData.append('fotos', fotoPerfil);
+        const resUpload = await axiosInstance.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (resUpload.data.urls && resUpload.data.urls.length > 0) {
+          urlFoto = resUpload.data.urls[0];
+        }
+      }
+      await axiosInstance.put('/usuarios/perfil', { nombre: formPerfil.nombre, foto_perfil_url: urlFoto });
+      toast.success('Perfil actualizado correctamente');
+      setMostrarModalPerfil(false);
+      setFotoPerfil(null);
+      fetchData(); 
+    } catch (err) { toast.error('Error al actualizar el perfil'); } 
+    finally { setSubiendoPerfil(false); }
   };
 
   const handleEliminarFavorito = async (id_producto) => {
@@ -86,6 +138,21 @@ const DashboardComprador = () => {
     }
   };
 
+  const handleCambiarPassword = async (e) => {
+    e.preventDefault();
+    setCambiandoPassword(true);
+    try {
+      await axiosInstance.post('/usuarios/cambiar-password', formPassword);
+      toast.success('Contraseña actualizada correctamente');
+      setMostrarModalPassword(false);
+      setFormPassword({ password_antigua: '', password_nueva: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error al cambiar la contraseña');
+    } finally {
+      setCambiandoPassword(false);
+    }
+  };
+
   const obtenerImagenUrl = (fotos) => {
     if (!fotos) return '';
     if (typeof fotos === 'string') {
@@ -102,7 +169,31 @@ const DashboardComprador = () => {
 
   return (
     <div className="container">
-      <h1 className="text-4xl font-bold mb-8">Mi perfil</h1>
+      {/* Cabecera del Perfil Integrada */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border">
+        <div className="flex items-center gap-6">
+          {previewPerfil ? (
+            <img src={previewPerfil} alt="Perfil" className="w-24 h-24 rounded-full object-cover border-4 border-gray-100 shadow-sm" />
+          ) : (
+            <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 border-4 border-gray-100 shadow-sm">
+              <FaUserCircle className="text-6xl" />
+            </div>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">{formPerfil.nombre || usuario?.nombre}</h1>
+            <p className="text-gray-500">Comprador verificado</p>
+          </div>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
+          <button onClick={() => setMostrarModalPerfil(true)} className="btn-secondary flex items-center justify-center gap-2 font-bold shadow-sm">
+            <FaEdit /> Editar Perfil
+          </button>
+          <button onClick={() => setMostrarModalPassword(true)} className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold hover:bg-black transition flex items-center justify-center gap-2 shadow-sm">
+            <FaKey /> Cambiar Contraseña
+          </button>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
         <div className="card">
@@ -235,6 +326,65 @@ const DashboardComprador = () => {
                 <button type="button" onClick={() => setModalResena(false)} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-colors">Cancelar</button>
                 <button type="submit" disabled={enviandoResena} className="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-2 rounded-xl font-bold hover:from-yellow-500 hover:to-yellow-600 shadow-md disabled:opacity-50 transition-all">
                   {enviandoResena ? 'Enviando...' : 'Publicar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Perfil Comprador */}
+      {mostrarModalPerfil && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-bold mb-4">Editar Mi Perfil</h2>
+            <form onSubmit={handleEditarPerfil} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold mb-1">Foto de Perfil</label>
+                <div className="flex items-center gap-4">
+                  {previewPerfil ? (
+                    <img src={previewPerfil} alt="Preview" className="w-16 h-16 rounded-full object-cover border shadow-sm" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500 shadow-sm">Sin foto</div>
+                  )}
+                  <input type="file" accept="image/*" onChange={(e) => { if(e.target.files[0]) { setFotoPerfil(e.target.files[0]); setPreviewPerfil(URL.createObjectURL(e.target.files[0])); } }} disabled={subiendoPerfil} className="flex-1 border rounded px-3 py-2 text-sm bg-white cursor-pointer hover:bg-gray-50 disabled:opacity-50" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-1">Nombre Completo</label>
+                <input required type="text" value={formPerfil.nombre} onChange={e => setFormPerfil({...formPerfil, nombre: e.target.value})} disabled={subiendoPerfil} className="w-full border rounded px-3 py-2 focus:bg-white" />
+              </div>
+              <div className="flex gap-2 mt-6 pt-4 border-t">
+                <button type="button" onClick={() => { setMostrarModalPerfil(false); setFotoPerfil(null); setPreviewPerfil(formPerfil.foto_perfil_url || ''); }} disabled={subiendoPerfil} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors">Cancelar</button>
+                <button type="submit" disabled={subiendoPerfil} className="flex-1 bg-blue-600 text-white py-2 rounded-xl font-bold hover:bg-blue-700 shadow-md disabled:opacity-50 transition-all">
+                  {subiendoPerfil ? '⏳ Guardando...' : 'Guardar Cambios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Cambiar Contraseña */}
+      {mostrarModalPassword && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+              <FaKey /> Cambiar Contraseña
+            </h2>
+            <form onSubmit={handleCambiarPassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold mb-1">Contraseña Actual</label>
+                <input required type="password" placeholder="Ingresa tu contraseña actual..." value={formPassword.password_antigua} onChange={e => setFormPassword({...formPassword, password_antigua: e.target.value})} disabled={cambiandoPassword} className="w-full border rounded px-3 py-2 focus:bg-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-1">Nueva Contraseña</label>
+                <input required type="password" placeholder="Crea una contraseña segura..." value={formPassword.password_nueva} onChange={e => setFormPassword({...formPassword, password_nueva: e.target.value})} disabled={cambiandoPassword} className="w-full border rounded px-3 py-2 focus:bg-white" minLength="6" />
+              </div>
+              <div className="flex gap-2 mt-6 pt-4 border-t">
+                <button type="button" onClick={() => { setMostrarModalPassword(false); setFormPassword({password_antigua: '', password_nueva: ''}); }} disabled={cambiandoPassword} className="flex-1 border-2 border-gray-300 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors">Cancelar</button>
+                <button type="submit" disabled={cambiandoPassword} className="flex-1 bg-gray-800 text-white py-2 rounded-xl font-bold hover:bg-black shadow-md disabled:opacity-50 transition-all">
+                  {cambiandoPassword ? '⏳ Guardando...' : 'Actualizar'}
                 </button>
               </div>
             </form>

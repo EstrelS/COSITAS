@@ -38,7 +38,7 @@ router.get('/', verifyToken, verifyRole('administrador'), async (req, res) => {
     try {
         const connection = await pool.getConnection();
         const [reportes] = await connection.query(
-        'SELECT * FROM reportes WHERE eliminado = FALSE ORDER BY fecha_reporte DESC'
+        'SELECT * FROM reportes WHERE (estado_reporte = "pendiente" OR estado_reporte IS NULL) AND (eliminado = FALSE OR eliminado IS NULL) ORDER BY fecha_reporte DESC'
         );
         connection.release();
         res.json({ success: true, reportes });

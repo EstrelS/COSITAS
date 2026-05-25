@@ -68,7 +68,32 @@ const obtenerCalificacionesProducto = async (req, res) => {
     }
 };
 
+const obtenerCalificacionesUsuario = async (req, res) => {
+    let connection;
+    try {
+        const { id_usuario } = req.params;
+        connection = await pool.getConnection();
+
+        const [calificaciones] = await connection.query(`
+        SELECT c.id_calificacion, c.puntiacion AS calificacion, c.omentario AS comentario, 
+               p.id_producto, p.titulo AS nombre_producto, p.fotos
+        FROM calificaciones c
+        JOIN transacciones t ON c.id_transaccion = t.id_transacciones
+        JOIN productos p ON t.id_producto = p.id_producto
+        WHERE c.id_calificador = ?
+        ORDER BY c.id_calificacion DESC
+        `, [id_usuario]);
+
+        res.json({ success: true, calificaciones });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
 module.exports = {
     crearCalificacion,
-    obtenerCalificacionesProducto
+    obtenerCalificacionesProducto,
+    obtenerCalificacionesUsuario
 };

@@ -72,23 +72,8 @@ const PanelAdmin = () => {
         <div className="card p-4"><FaExclamationTriangle className="text-3xl text-red-600 mb-2" /><p className="text-gray-600">Reportes Pendientes</p><p className="text-3xl font-bold">{stats?.reportes_pendientes || 0}</p></div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Reportes Table */}
-        <div className="card p-6">
-          <h2 className="text-2xl font-bold mb-6">Reportes Pendientes</h2>
-          {reportes.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No hay reportes pendientes por revisar en este momento.</p>
-          ) : (
-            reportes.map(r => (
-              <div key={r.id_reporte} className="border-b py-4 flex justify-between items-center">
-                <div><p className="font-bold">{r.motivo_reporte}</p><p className="text-sm text-gray-500">{r.descripcion}</p></div>
-                <button onClick={() => handleResolverReporte(r.id_reporte, 'resuelto')} className="bg-green-600 text-white px-3 py-1 rounded text-sm">Resolver</button>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Acceso a Gestión de Productos */}
+      {/* Acceso a Gestión de Productos */}
+      <div className="mb-8">
         <div className="card p-6 border-l-4 border-red-500">
           <h2 className="text-2xl font-bold mb-2">Gestión de Inventario</h2>
           <p className="text-gray-600 mb-4">Administra productos desactivados y reactívalos aquí.</p>
@@ -99,6 +84,43 @@ const PanelAdmin = () => {
             Ver productos desactivados
           </Link>
         </div>
+      </div>
+
+      {/* Reportes Detallados */}
+      <div className="card p-6 mb-8">
+        <h2 className="text-2xl font-bold mb-6 text-red-600 flex items-center gap-2">
+          <FaExclamationTriangle /> Reportes Pendientes
+        </h2>
+        {reportes.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No hay reportes pendientes por revisar en este momento.</p>
+        ) : (
+          <div className="space-y-4">
+            {reportes.map(r => (
+              <div key={r.id_reporte} className="border p-4 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-md transition-shadow bg-red-50/30">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">
+                      {r.id_producto_reportado ? 'Producto' : r.id_usuario_reportado ? 'Perfil' : 'Reporte'}
+                    </span>
+                    <h3 className="font-bold text-lg text-red-800">{r.motivo_reporte}</h3>
+                  </div>
+                  <p className="text-gray-700 mb-3 bg-white p-3 rounded border">{r.descripcion}</p>
+                  <div className="text-sm text-gray-500 flex flex-wrap gap-4 font-semibold">
+                    <span>ID Reporte: #{r.id_reporte}</span>
+                    <span>Denunciante: Usuario #{r.id_usuario}</span>
+                    {r.id_producto_reportado && <span>Producto Reportado: #{r.id_producto_reportado}</span>}
+                    {r.id_usuario_reportado && <span>Usuario Reportado: #{r.id_usuario_reportado}</span>}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 w-full md:w-48 shrink-0">
+                  {r.id_producto_reportado && <Link to={`/productos/${r.id_producto_reportado}`} className="text-center bg-white border-2 border-blue-500 text-blue-600 px-4 py-2 rounded-lg font-bold hover:bg-blue-50 transition">Ver Producto</Link>}
+                  {r.id_usuario_reportado && <Link to={`/artesanos/${r.id_usuario_reportado}`} className="text-center bg-white border-2 border-blue-500 text-blue-600 px-4 py-2 rounded-lg font-bold hover:bg-blue-50 transition">Ver Perfil</Link>}
+                  <button onClick={() => handleResolverReporte(r.id_reporte, 'resuelto')} className="w-full bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition shadow-sm">✔ Marcar Resuelto</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Gestión de Usuarios */}
