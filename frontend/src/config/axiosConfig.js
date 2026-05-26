@@ -1,11 +1,10 @@
 import axios from 'axios';
 import { getCSRFToken } from '../utils/csrfToken';
 
-const API_BASE_URL = 'http://localhost:5000/api/v1'; // Forzado a 5000 para evitar errores de conexión
-
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/v1';
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json'
   }
