@@ -111,14 +111,16 @@ const login = async (req, res) => {
 
 // NUEVA FUNCIÓN: Traer a todos los usuarios para el panel de Admin
 const obtenerUsuarios = async (req, res) => {
+    let connection;
     try {
-        const connection = await pool.getConnection();
+        connection = await pool.getConnection();
         const [usuarios] = await connection.query('SELECT id_usuario, nombre, email, tipo_usuario, fecha_registro, eliminado FROM usuarios');
-        connection.release();
 
         res.json({ success: true, usuarios });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
+    } finally {
+        if (connection) connection.release();
     }
 };
 

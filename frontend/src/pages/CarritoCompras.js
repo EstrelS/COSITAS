@@ -46,7 +46,7 @@ const CarritoCompras = () => {
     setProcesandoIds(prev => [...prev, id_producto]);
     try {
       const cantidadActual = carrito.find(i => i.id_producto === id_producto)?.cantidad || 0;
-      await axiosInstance.post('/carrito', { id_producto, cantidad: nueva_cantidad - cantidadActual });
+      await axiosInstance.post('/carrito', { id_producto: Number(id_producto), cantidad: Number(nueva_cantidad - cantidadActual) });
       await cargarCarrito();
     } catch (err) {
       toast.error('Error al actualizar');
@@ -75,7 +75,7 @@ const CarritoCompras = () => {
     try {
       // Creamos una compra por cada producto en el carrito y lo borramos
       for (const item of carrito) {
-        await axiosInstance.post('/transacciones', { id_producto: item.id_producto, cantidad: item.cantidad });
+        await axiosInstance.post('/transacciones', { id_producto: Number(item.id_producto), cantidad: Number(item.cantidad) });
         await axiosInstance.delete(`/carrito/${item.id_producto}`);
       }
       toast.success('¡Pago exitoso! Gracias por tu compra.');
