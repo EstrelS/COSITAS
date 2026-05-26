@@ -23,6 +23,10 @@ const agregarAlCarrito = async (req, res) => {
                 throw new Error("Problema con la tabla carrito: " + dbErr2.message);
             }
         }
+        await connection.query(
+            'INSERT INTO carrito (id_usuario, id_producto, cantidad) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE cantidad = cantidad + ?',
+            [id_usuario, id_producto, cantidad, cantidad]
+        );
         res.status(201).json({ success: true, message: 'Producto agregado al carrito' });
     } catch (err) {
         console.error('❌ Error en agregarAlCarrito:', err);
@@ -56,6 +60,10 @@ const obtenerCarrito = async (req, res) => {
                 console.log('⚠️ Error en tabla carrito (ignorando para no romper la página):', dbErr2.message);
             }
         }
+        const [carrito] = await connection.query(
+            'SELECT c.id_producto, c.cantidad, p.titulo AS nombre, p.precio, p.fotos AS foto FROM carrito c JOIN productos p ON c.id_producto = p.id_producto WHERE c.id_usuario = ?',
+            [id_usuario]
+        );
         res.json({ success: true, carrito });
     } catch (err) {
         console.error('❌ Error en obtenerCarrito:', err);
@@ -81,6 +89,7 @@ const eliminarDelCarrito = async (req, res) => {
                 throw new Error("Problema con la tabla carrito: " + dbErr2.message);
             }
         }
+        await connection.query('DELETE FROM carrito WHERE id_usuario = ? AND id_producto = ?', [id_usuario, id_producto]);
         res.json({ success: true, message: 'Eliminado del carrito' });
     } catch (err) {
         console.error('❌ Error en eliminarDelCarrito:', err);

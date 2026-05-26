@@ -86,35 +86,11 @@ const crearProducto = async (req, res) => {
         await connection.beginTransaction();
         
         let result;
-        try {
-            // Intento 1: Con decripcion y fotos
-            [result] = await connection.query(
-                'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, "activo")',
-                [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
-            );
-        } catch (e1) {
-            try {
-                // Intento 2: Con descripcion (bien escrito) y fotos
-                [result] = await connection.query(
-                    'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, "activo")',
-                    [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
-                );
-            } catch (e2) {
-                try {
-                    // Intento 3: Sin fotos y con decripcion
-                    [result] = await connection.query(
-                        'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, estado_producto) VALUES (?, ?, ?, ?, ?, ?, "activo")',
-                        [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria]
-                    );
-                } catch (e3) {
-                    // Intento 4: Sin fotos y con descripcion
-                    [result] = await connection.query(
-                        'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, estado_producto) VALUES (?, ?, ?, ?, ?, ?, "activo")',
-                        [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria]
-                    );
-                }
-            }
-        }
+        // Usamos 'decripcion' ya que has confirmado que así se llama la columna en la base de datos
+        [result] = await connection.query(
+            'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, "activo")',
+            [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
+        );
 
         if (!result) {
             throw new Error("La tabla productos no coincide con ninguna de las estructuras esperadas.");
@@ -155,6 +131,7 @@ const obtenerProductos = async (req, res) => {
         let estadoCondition = incluir_inactivos === 'true' ? '1=1' : 'p.estado_producto = "activo"';
         let query = `
             SELECT p.*, p.decripcion AS descripcion,
+            SELECT p.*, p.descripcion,
                    (SELECT COALESCE(AVG(c.puntiacion), 0) 
                     FROM calificaciones c 
                     JOIN transacciones t ON c.id_transaccion = t.id_transacciones 
@@ -183,6 +160,7 @@ const obtenerProductoId = async (req, res) => {
         connection = await pool.getConnection();
         const [productos] = await connection.query(`
             SELECT p.*, p.decripcion AS descripcion,
+            SELECT p.*, p.descripcion,
                    (SELECT COALESCE(AVG(c.puntiacion), 0) 
                     FROM calificaciones c 
                     JOIN transacciones t ON c.id_transaccion = t.id_transacciones 
@@ -261,7 +239,7 @@ const actualizarProducto = async (req, res) => {
         }
 
         if (descripcion !== undefined) {
-            updateQuery += 'decripcion = ?, ';
+            updateQuery += 'decripcion = ?, '; // Usamos 'decripcion' según la base de datos
             updateValues.push(descripcion);
         }
 
