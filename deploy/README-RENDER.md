@@ -36,20 +36,20 @@
 En Render, ve a **"Environment"** y agrega estas variables:
 
 ```
-DB_HOST=cositas-db-miguel-16d8.g.aivencloud.com
-DB_PORT=25190
-DB_USER=avnadmin
-DB_PASSWORD=AVNS_a3iAEKTeR7Pb-02Nmzr
-DB_NAME=defaultdb
+DB_HOST=tu_host_aiven.aivencloud.com
+DB_PORT=tu_puerto_bd
+DB_USER=tu_usuario_bd
+DB_PASSWORD=tu_contraseña_bd_segura
+DB_NAME=tu_nombre_bd
 
 PORT=5000
 NODE_ENV=production
 
-JWT_SECRET=tu_secreto_jwt_super_seguro_2024
+JWT_SECRET=tu_secreto_jwt_muy_seguro_cambiar
 
 FRONTEND_URL=https://tu-frontend-url.vercel.app
 
-AES_SECRET_KEY=MiClaveSecretaSuperSegura2026
+AES_SECRET_KEY=tu_clave_aes_segura_cambiar
 
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
@@ -60,7 +60,10 @@ MAX_FILE_SIZE=5242880
 UPLOAD_PATH=./uploads
 ```
 
-⚠️ **IMPORTANTE**: Reemplaza los valores con tus credenciales reales.
+⚠️ **IMPORTANTE**: 
+- Reemplaza TODOS los valores con tus credenciales reales
+- NUNCA expongas contraseñas en el código
+- Usa variables de entorno en Render para guardar secretos
 
 ---
 
