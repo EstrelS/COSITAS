@@ -13,24 +13,28 @@ const perfilSchema = Joi.object({
 });
 
 // Obtener perfil del artesano
+// Obtener perfil del artesano
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const connection = await pool.getConnection();
         
+        // ¡Cambiamos "artesano" por 'artesano' con comillas simples!
         const [artesanos] = await connection.query(
-        'SELECT u.id_usuario, u.nombre, u.calificacion_promedio, u.foto_perfil_url, u.verificado, pa.especialidad, pa.decripcion_taller AS descripcion, pa.años_experiencia, pa.redes_sociales_json AS redes_sociales FROM usuarios u LEFT JOIN perfil_artesano pa ON u.id_usuario = pa.id_usuario WHERE u.id_usuario = ? AND (u.eliminado = FALSE OR u.eliminado IS NULL) AND u.tipo_usuario = "artesano"',
+        "SELECT u.id_usuario, u.nombre, u.calificacion_promedio, u.foto_perfil_url, u.verificado, pa.especialidad, pa.decripcion_taller AS descripcion, pa.años_experiencia, pa.redes_sociales_json AS redes_sociales FROM usuarios u LEFT JOIN perfil_artesano pa ON u.id_usuario = pa.id_usuario WHERE u.id_usuario = ? AND (u.eliminado = FALSE OR u.eliminado IS NULL) AND u.tipo_usuario = 'artesano'",
         [id]
         );
         
         connection.release();
         
         if (artesanos.length === 0) {
-        return res.status(404).json({ success: false, message: 'Artesano no encontrado' });
+            return res.status(404).json({ success: false, message: 'Artesano no encontrado' });
         }
         
         res.json({ success: true, artesano: artesanos[0] });
     } catch (err) {
+        // Agregamos este console.error para que NUNCA más un error sea invisible en Render
+        console.error("Error al obtener artesano:", err);
         res.status(500).json({ success: false, message: err.message });
     }
 });
