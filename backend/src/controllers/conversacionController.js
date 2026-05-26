@@ -1,10 +1,11 @@
 const pool = require('../config/database');
 
 const crearConversacion = async (req, res) => {
+    let connection;
     try {
         const { id_usuario_2 } = req.body;
         const id_usuario_1 = req.user.id_usuario;
-        const connection = await pool.getConnection();
+        connection = await pool.getConnection();
 
         // Verificar si conversación ya existe
         const [existente] = await connection.query(
@@ -13,7 +14,6 @@ const crearConversacion = async (req, res) => {
         );
 
         if (existente.length > 0) {
-        connection.release();
         return res.json({ success: true, id_conversacion: existente[0].id_conversacion });
         }
 
@@ -22,11 +22,11 @@ const crearConversacion = async (req, res) => {
         [id_usuario_1, id_usuario_2]
         );
 
-        connection.release();
-
         res.status(201).json({ success: true, id_conversacion: result.insertId });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
+    } finally {
+        if (connection) connection.release();
     }
 };
 
