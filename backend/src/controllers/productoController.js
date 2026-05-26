@@ -152,7 +152,7 @@ const obtenerProductos = async (req, res) => {
     try {
         const { categoria, busqueda, vendedor, incluir_inactivos } = req.query;
         connection = await pool.getConnection();
-        let estadoCondition = incluir_inactivos === 'true' ? '1=1' : 'p.estado_producto = "activo"';
+        let estadoCondition = incluir_inactivos === 'true' ? '1=1' : "p.estado_producto = 'activo'";
         let query = `
             SELECT p.*, p.decripcion AS descripcion,
                    (SELECT COALESCE(AVG(c.puntiacion), 0) 
