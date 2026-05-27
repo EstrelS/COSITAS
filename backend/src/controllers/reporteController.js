@@ -16,7 +16,7 @@ const crearReporte = async (req, res) => {
         }
 
         const { id_producto, motivo_reporte, descripcion } = value;
-        const id_usuario_reporta = req.user.id_usuario; // Obtenemos el usuario autenticado
+        const id_usuario_reporta = req.user.id_usuario; 
 
         connection = await pool.getConnection();
         
@@ -38,12 +38,12 @@ const obtenerReportes = async (req, res) => {
     let connection;
     try {
         connection = await pool.getConnection();
-        // Traemos solo los pendientes y le adjuntamos el nombre del producto
         const [reportes] = await connection.query(
             'SELECT r.*, p.titulo AS nombre_producto FROM reportes r JOIN productos p ON r.id_producto = p.id_producto WHERE r.estado = "pendiente" ORDER BY r.fecha_reporte DESC'
         );
         res.json({ success: true, reportes });
     } catch (err) {
+        console.error('Error al obtener reportes:', err); // ¡Agregado!
         res.status(500).json({ success: false, message: 'Error al cargar reportes' });
     } finally {
         if (connection) connection.release();
@@ -54,11 +54,12 @@ const resolverReporte = async (req, res) => {
     let connection;
     try {
         const { id } = req.params;
-        const { estado } = req.body; // Puede ser 'resuelto' o 'desestimado'
+        const { estado } = req.body; 
         connection = await pool.getConnection();
         await connection.query('UPDATE reportes SET estado = ? WHERE id_reporte = ?', [estado, id]);
         res.json({ success: true, message: 'Reporte actualizado' });
     } catch (err) {
+        console.error('Error al resolver reporte:', err); // ¡Agregado!
         res.status(500).json({ success: false, message: 'Error al resolver reporte' });
     } finally {
         if (connection) connection.release();
