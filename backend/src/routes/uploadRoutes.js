@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const upload = require('../config/multerConfig');
+
+// IMPORTACIÓN CORREGIDA: Ahora apuntamos a tu nuevo archivo cloudinary.js
+const { upload } = require('../config/cloudinary'); 
 const { subirImagenes } = require('../controllers/uploadController');
 const { verifyToken, verifyRole } = require('../middleware/authMiddleware');
 
