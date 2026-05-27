@@ -5,14 +5,14 @@ import { FaMinus, FaPlus, FaTrash } from 'react-icons/fa';
 
 const CarritoCompras = () => {
   const [carrito, setCarrito] = useState([]);
-  const [procesandoIds, setProcesandoIds] = useState([]);
   const [mostrarPagoModal, setMostrarPagoModal] = useState(false);
   const [procesandoPago, setProcesandoPago] = useState(false);
 
-  const cargarCarrito = async () => {
+  // Leemos de localStorage en lugar del backend
+  const cargarCarrito = () => {
     try {
-      const res = await axiosInstance.get('/carrito');
-      setCarrito(res.data.carrito || []);
+      const carritoGuardado = JSON.parse(localStorage.getItem('carrito')) || [];
+      setCarrito(carritoGuardado);
     } catch (err) {
       toast.error('Error al cargar el carrito');
     }
@@ -36,51 +36,47 @@ const CarritoCompras = () => {
     return '';
   };
 
-  const actualizarCantidad = async (id_producto, nueva_cantidad) => {
-    if (procesandoIds.includes(id_producto)) return;
+  // Actualizamos el estado y localStorage al mismo tiempo
+  const actualizarCantidad = (id_producto, nueva_cantidad) => {
     if (nueva_cantidad <= 0) {
       eliminarDelCarrito(id_producto);
       return;
     }
     
-    setProcesandoIds(prev => [...prev, id_producto]);
-    try {
-      const cantidadActual = carrito.find(i => i.id_producto === id_producto)?.cantidad || 0;
-      await axiosInstance.post('/carrito', { id_producto: Number(id_producto), cantidad: Number(nueva_cantidad - cantidadActual) });
-      await cargarCarrito();
-    } catch (err) {
-      toast.error('Error al actualizar');
-    } finally {
-      setProcesandoIds(prev => prev.filter(id => id !== id_producto));
-    }
+    const nuevoCarrito = carrito.map(item => {
+      if (String(item.id_producto) === String(id_producto)) {
+        return { ...item, cantidad: nueva_cantidad };
+      }
+      return item;
+    });
+
+    setCarrito(nuevoCarrito);
+    localStorage.setItem('carrito', JSON.stringify(nuevoCarrito));
   };
 
-  const eliminarDelCarrito = async (id_producto) => {
-    if (procesandoIds.includes(id_producto)) return;
-    setProcesandoIds(prev => [...prev, id_producto]);
-    try {
-      await axiosInstance.delete(`/carrito/${id_producto}`);
-      await cargarCarrito();
-      toast.success('Producto removido');
-    } catch (err) {
-      toast.error('Error al eliminar');
-    } finally {
-      setProcesandoIds(prev => prev.filter(id => id !== id_producto));
-    }
+  // Filtramos el producto y lo quitamos de la memoria
+  const eliminarDelCarrito = (id_producto) => {
+    const nuevoCarrito = carrito.filter(item => String(item.id_producto) !== String(id_producto));
+    setCarrito(nuevoCarrito);
+    localStorage.setItem('carrito', JSON.stringify(nuevoCarrito));
+    toast.success('Producto removido');
   };
 
   const procesarPagoCarrito = async (e) => {
     e.preventDefault();
     setProcesandoPago(true);
     try {
-      // Creamos una compra por cada producto en el carrito y lo borramos
+      // Creamos la transacción en el backend de forma normal
       for (const item of carrito) {
         await axiosInstance.post('/transacciones', { id_producto: Number(item.id_producto), cantidad: Number(item.cantidad) });
-        await axiosInstance.delete(`/carrito/${item.id_producto}`);
       }
-      toast.success('¡Pago exitoso! Gracias por tu compra.');
+      
+      // Vaciamos el carrito local después del pago
+      localStorage.removeItem('carrito');
+      setCarrito([]);
       setMostrarPagoModal(false);
-      await cargarCarrito();
+      
+      toast.success('¡Pago exitoso! Gracias por tu compra.');
     } catch (err) {
       toast.error('Error al procesar el pago de algunos productos.');
     } finally {
@@ -112,15 +108,15 @@ const CarritoCompras = () => {
                   <p className="text-blue-600">${item.precio}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => actualizarCantidad(item.id_producto, item.cantidad - 1)} disabled={procesandoIds.includes(item.id_producto)} className="btn-secondary p-2 disabled:opacity-50">
+                  <button onClick={() => actualizarCantidad(item.id_producto, item.cantidad - 1)} className="btn-secondary p-2">
                     <FaMinus />
                   </button>
                   <span className="w-8 text-center">{item.cantidad}</span>
-                  <button onClick={() => actualizarCantidad(item.id_producto, item.cantidad + 1)} disabled={procesandoIds.includes(item.id_producto)} className="btn-secondary p-2 disabled:opacity-50">
+                  <button onClick={() => actualizarCantidad(item.id_producto, item.cantidad + 1)} className="btn-secondary p-2">
                     <FaPlus />
                   </button>
                 </div>
-                <button onClick={() => eliminarDelCarrito(item.id_producto)} disabled={procesandoIds.includes(item.id_producto)} className="text-red-600 disabled:opacity-50">
+                <button onClick={() => eliminarDelCarrito(item.id_producto)} className="text-red-600">
                   <FaTrash />
                 </button>
               </div>
