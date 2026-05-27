@@ -26,8 +26,9 @@ const obtenerFavoritos = async (req, res) => {
         const id_usuario = req.user.id_usuario;
         connection = await pool.getConnection();
 
+        // CORREGIDO: Se cambiaron las comillas de "suspendido" a 'suspendido'
         const [favoritos] = await connection.query(
-        'SELECT p.* FROM favoritos f JOIN productos p ON f.id_producto = p.id_producto WHERE f.id_usuario = ? AND p.estado_producto != "suspendido"',
+        "SELECT p.* FROM favoritos f JOIN productos p ON f.id_producto = p.id_producto WHERE f.id_usuario = ? AND p.estado_producto != 'suspendido'",
         [id_usuario]
         );
 

@@ -87,29 +87,29 @@ const crearProducto = async (req, res) => {
         
         let result;
         try {
-            // Intento 1: Con decripcion y fotos
+            // Intento 1: Con decripcion y fotos (CORREGIDO 'activo')
             [result] = await connection.query(
-                'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, "activo")',
+                "INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, 'activo')",
                 [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
             );
         } catch (e1) {
             try {
-                // Intento 2: Con descripcion (bien escrito) y fotos
+                // Intento 2: Con descripcion (bien escrito) y fotos (CORREGIDO 'activo')
                 [result] = await connection.query(
-                    'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, "activo")',
+                    "INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, 'activo')",
                     [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
                 );
             } catch (e2) {
                 try {
-                    // Intento 3: Sin fotos y con decripcion
+                    // Intento 3: Sin fotos y con decripcion (CORREGIDO 'activo')
                     [result] = await connection.query(
-                        'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, estado_producto) VALUES (?, ?, ?, ?, ?, ?, "activo")',
+                        "INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, estado_producto) VALUES (?, ?, ?, ?, ?, ?, 'activo')",
                         [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria]
                     );
                 } catch (e3) {
-                    // Intento 4: Sin fotos y con descripcion
+                    // Intento 4: Sin fotos y con descripcion (CORREGIDO 'activo')
                     [result] = await connection.query(
-                        'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, estado_producto) VALUES (?, ?, ?, ?, ?, ?, "activo")',
+                        "INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, estado_producto) VALUES (?, ?, ?, ?, ?, ?, 'activo')",
                         [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria]
                     );
                 }
@@ -297,13 +297,12 @@ const pausarProducto = async (req, res) => {
 };
 
 // --- FUNCIÓN DE REACTIVACIÓN CORREGIDA ---
-// Esta función ahora es directa y no valida otros campos para evitar errores con Joi
 const reactivarProducto = async (req, res) => {
     try {
         const { id } = req.params;
         const connection = await pool.getConnection();
         
-        // Verificación de seguridad: Evitar que el vendedor reactive un producto suspendido por el admin
+        // Verificación de seguridad
         if (req.user.tipo_usuario !== 'administrador') {
             const [prods] = await connection.query('SELECT estado_producto FROM productos WHERE id_producto = ?', [id]);
             if (prods.length > 0 && prods[0].estado_producto === 'suspendido') {
@@ -312,8 +311,9 @@ const reactivarProducto = async (req, res) => {
             }
         }
 
+        // CORREGIDO: comillas simples para 'activo'
         const [result] = await connection.query(
-            'UPDATE productos SET estado_producto = "activo" WHERE id_producto = ?', 
+            "UPDATE productos SET estado_producto = 'activo' WHERE id_producto = ?", 
             [id]
         );
         
