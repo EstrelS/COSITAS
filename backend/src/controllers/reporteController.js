@@ -39,8 +39,8 @@ const obtenerReportes = async (req, res) => {
     try {
         connection = await pool.getConnection();
         const [reportes] = await connection.query(
-            'SELECT r.*, p.titulo AS nombre_producto FROM reportes r JOIN productos p ON r.id_producto = p.id_producto WHERE r.estado = "pendiente" ORDER BY r.fecha_reporte DESC'
-        );
+    "SELECT r.*, p.titulo AS nombre_producto FROM reportes r JOIN productos p ON r.id_producto = p.id_producto WHERE r.estado = 'pendiente' ORDER BY r.fecha_reporte DESC"
+);
         res.json({ success: true, reportes });
     } catch (err) {
         console.error('Error al obtener reportes:', err); // ¡Agregado!

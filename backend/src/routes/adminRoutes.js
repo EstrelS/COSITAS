@@ -12,9 +12,9 @@ router.get('/dashboard/stats', verifyToken, verifyRole('administrador'), async (
         const [productos] = await connection.query('SELECT COUNT(*) as total FROM productos WHERE eliminado = 0');
         const [transacciones] = await connection.query('SELECT COUNT(*) as total FROM transacciones');
         
-        // CORREGIDO: Cambiamos estado_reporte por estado
-        const [reportes] = await connection.query('SELECT COUNT(*) as total FROM reportes WHERE estado = "pendiente"');
         
+// CÓDIGO CORREGIDO (comillas simples en 'pendiente'):
+    const [reportes] = await connection.query("SELECT COUNT(*) as total FROM reportes WHERE estado = 'pendiente'");        
         connection.release();
         res.json({ success: true, stats: { usuarios: usuarios[0].total, productos: productos[0].total, transacciones: transacciones[0].total, reportes_pendientes: reportes[0].total } });
     } catch (err) {
