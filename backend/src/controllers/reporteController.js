@@ -38,12 +38,13 @@ const obtenerReportes = async (req, res) => {
     let connection;
     try {
         connection = await pool.getConnection();
+        // ENFORZADO: Comillas simples en 'pendiente' para evitar errores 500
         const [reportes] = await connection.query(
-    "SELECT r.*, p.titulo AS nombre_producto FROM reportes r JOIN productos p ON r.id_producto = p.id_producto WHERE r.estado = 'pendiente' ORDER BY r.fecha_reporte DESC"
-);
+            "SELECT r.*, p.titulo AS nombre_producto FROM reportes r JOIN productos p ON r.id_producto = p.id_producto WHERE r.estado = 'pendiente' ORDER BY r.fecha_reporte DESC"
+        );
         res.json({ success: true, reportes });
     } catch (err) {
-        console.error('Error al obtener reportes:', err); // ¡Agregado!
+        console.error('Error al obtener reportes:', err);
         res.status(500).json({ success: false, message: 'Error al cargar reportes' });
     } finally {
         if (connection) connection.release();
@@ -59,7 +60,7 @@ const resolverReporte = async (req, res) => {
         await connection.query('UPDATE reportes SET estado = ? WHERE id_reporte = ?', [estado, id]);
         res.json({ success: true, message: 'Reporte actualizado' });
     } catch (err) {
-        console.error('Error al resolver reporte:', err); // ¡Agregado!
+        console.error('Error al resolver reporte:', err);
         res.status(500).json({ success: false, message: 'Error al resolver reporte' });
     } finally {
         if (connection) connection.release();
