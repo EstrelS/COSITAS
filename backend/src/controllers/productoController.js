@@ -203,10 +203,11 @@ const obtenerProductoId = async (req, res) => {
 const actualizarProducto = async (req, res) => {
     try {
         const { id } = req.params;
-        const { titulo, precio, descripcion } = req.body;
+        // 1. AÑADIDO: Agregamos 'fotos' a la desestructuración del cuerpo
+        const { titulo, precio, descripcion, fotos } = req.body;
 
-        // Validar que al menos UN campo esté siendo actualizado
-        if (titulo === undefined && precio === undefined && descripcion === undefined) {
+        // 2. MODIFICADO: Validar que al menos UN campo (incluyendo fotos) esté siendo actualizado
+        if (titulo === undefined && precio === undefined && descripcion === undefined && fotos === undefined) {
             return res.status(400).json({ 
                 success: false, 
                 errors: ['Debes modificar al menos un campo'] 
@@ -261,8 +262,15 @@ const actualizarProducto = async (req, res) => {
         }
 
         if (descripcion !== undefined) {
+            // Nota: Mantenemos 'decripcion' por si así se llama exactamente tu columna en MySQL
             updateQuery += 'decripcion = ?, ';
             updateValues.push(descripcion);
+        }
+
+        // 3. NUEVO: Si el usuario editó la foto, la añadimos a la Query como string JSON
+        if (fotos !== undefined) {
+            updateQuery += 'fotos = ?, ';
+            updateValues.push(Array.isArray(fotos) ? JSON.stringify(fotos) : fotos);
         }
 
         // Remover la última coma y espacio
@@ -273,13 +281,13 @@ const actualizarProducto = async (req, res) => {
         const connection = await pool.getConnection();
         await connection.query(updateQuery, updateValues);
         connection.release();
+        
         res.json({ success: true, message: 'Producto actualizado exitosamente' });
     } catch (err) { 
         console.error("Error en actualizarProducto:", err);
         res.status(500).json({ success: false, message: err.message }); 
     }
 };
-
 const pausarProducto = async (req, res) => {
     try {
         const { id } = req.params;

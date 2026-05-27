@@ -35,6 +35,9 @@ const DashboardArtesano = () => {
     const [formEditar, setFormEditar] = useState({ id_producto: null, titulo: '', precio: '', descripcion: '' });
     const [guardandoEdicion, setGuardandoEdicion] = useState(false);
     const [mostrarModalPausados, setMostrarModalPausados] = useState(false);
+    // NUEVOS ESTADOS PARA FOTO DE EDICIÓN
+    const [fotoEdicion, setFotoEdicion] = useState(null);
+    const [previewEdicion, setPreviewEdicion] = useState('');
 
     // Estados para Reseñas
     const [modalResena, setModalResena] = useState(false);
@@ -173,6 +176,8 @@ const DashboardArtesano = () => {
             precio: producto.precio,
             descripcion: producto.descripcion || ''
         });
+        setFotoEdicion(null);
+        setPreviewEdicion(obtenerImagenUrl(producto.fotos));
         setMostrarModalEditar(true);
     };
 
@@ -180,7 +185,21 @@ const DashboardArtesano = () => {
         e.preventDefault();
         setGuardandoEdicion(true);
         try {
-            await axiosInstance.put(`/productos/${formEditar.id_producto}`, formEditar);
+            let payload = { ...formEditar };
+
+            // Si el usuario seleccionó una nueva foto, la subimos primero a Cloudinary
+            if (fotoEdicion) {
+                const formData = new FormData();
+                formData.append('fotos', fotoEdicion); // Enviamos a tu ruta /upload
+                const resUpload = await axiosInstance.post('/upload', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                if (resUpload.data.urls && resUpload.data.urls.length > 0) {
+                    payload.fotos = resUpload.data.urls; // Agregamos la URL nueva al payload
+                }
+            }
+
+            await axiosInstance.put(`/productos/${formEditar.id_producto}`, payload);
             toast.success('Producto actualizado exitosamente');
             setMostrarModalEditar(false);
             fetchProductos();
@@ -581,10 +600,35 @@ const DashboardArtesano = () => {
 
             {/* --- MODAL EDITAR PRODUCTO --- */}
             {mostrarModalEditar && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl my-8">
                         <h2 className="text-2xl font-bold mb-4">Editar Producto</h2>
                         <form onSubmit={handleGuardarEdicion} className="space-y-4">
+                            
+                            {/* NUEVO: Campo de Foto */}
+                            <div>
+                                <label className="block text-sm font-bold mb-1">Foto del Producto</label>
+                                <div className="flex items-center gap-4">
+                                    {previewEdicion ? (
+                                        <img src={previewEdicion} alt="Preview" className="w-16 h-16 rounded-lg object-cover border shadow-sm" />
+                                    ) : (
+                                        <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center text-xs text-gray-500 shadow-sm">Sin foto</div>
+                                    )}
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={(e) => { 
+                                            if(e.target.files[0]) { 
+                                                setFotoEdicion(e.target.files[0]); 
+                                                setPreviewEdicion(URL.createObjectURL(e.target.files[0])); 
+                                            } 
+                                        }} 
+                                        disabled={guardandoEdicion}
+                                        className="flex-1 border rounded px-3 py-2 text-sm bg-white cursor-pointer hover:bg-gray-50 disabled:opacity-50"
+                                    />
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-bold mb-1">Título</label>
                                 <input type="text" required value={formEditar.titulo} onChange={e => setFormEditar({...formEditar, titulo: e.target.value})} disabled={guardandoEdicion} className="w-full border rounded px-3 py-2 disabled:opacity-50" />

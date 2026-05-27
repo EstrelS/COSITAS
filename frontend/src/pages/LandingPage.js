@@ -4,56 +4,53 @@ import BannerCarousel from '../components/BannerCarousel';
 const LandingPage = () => {
     return (
         <div className="landing-page">
-            {/* 1. SECCIÓN HERO (Carrusel arriba, contenido apilado abajo matching image_8.png structure with original gradient applied) */}
-            <section className="w-full">
-                {/* El carrusel queda arriba */}
-                <div className="w-full overflow-hidden">
+            {/* 1. SECCIÓN HERO (Carrusel como fondo, texto y buscador flotando encima) */}
+            <section className="relative w-full h-[600px] md:h-[700px] overflow-hidden">
+                
+                {/* Carrusel de fondo - Ocupa todo el alto y ancho de la sección */}
+                <div className="absolute inset-0 w-full h-full z-0">
                     <BannerCarousel />
                 </div>
 
-                {/* Contenido Principal (Título y párrafo) below carousel with background removed to allow gradient below */}
-                <div className="w-full flex flex-col items-center text-center py-10 px-4 bg-white border-b border-gray-100">
-                    <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
+                {/* Capa de oscurecimiento (Overlay) para que el texto resalte siempre */}
+                <div className="absolute inset-0 bg-black bg-opacity-50 z-10"></div>
+
+                {/* Contenido Principal (Título, Buscador, Párrafo y Botón flotando en el centro) */}
+                <div className="absolute inset-0 flex flex-col justify-center items-center text-center px-4 z-20">
+                    
+                    <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-6 drop-shadow-lg">
                         Descubre Artesanías Únicas
                     </h1>
                     
-                    <p className="text-lg md:text-xl text-gray-700 mb-8 max-w-2xl">
+                    <p className="text-lg md:text-2xl text-gray-200 mb-10 max-w-2xl drop-shadow-md">
                         Conectamos artesanos locales con clientes de todo el mundo. Productos handmade de calidad.
                     </p>
-                </div>
 
-                {/* LA BARRA REPARADA: Transición Rosa Mexicano -> Naranja Sempasuchilt containing search bar and Explora Link */}
-                {/* Applying the desired gradient background using tailwind colors that match reference images */}
-                <div className="w-full bg-gradient-to-r from-pink-600 to-orange-500 py-12 flex flex-col justify-center items-center text-center px-4 z-10 shadow-inner">
-                    
-                    {/* Barra de búsqueda funcional logic assumed correct from previous turns */}
-                    <div className="flex w-full max-w-lg mb-8 shadow-xl">
+                    {/* Barra de búsqueda */}
+                    <div className="flex w-full max-w-2xl mb-8 shadow-2xl">
                         <input 
                             type="text" 
                             placeholder="Buscar vasijas, textiles, joyería..." 
-                            className="w-full px-5 py-3 rounded-l focus:outline-none text-gray-800"
+                            className="w-full px-6 py-4 rounded-l-lg focus:outline-none text-gray-800 text-lg"
                         />
-                        {/* Assumed function maneja submit */}
-                        <button className="bg-red-700 text-white px-6 py-3 rounded-r font-bold hover:bg-red-800 transition-colors">
+                        <button className="bg-red-600 text-white px-8 py-4 rounded-r-lg font-bold text-lg hover:bg-red-700 transition-colors">
                             Buscar
                         </button>
                     </div>
 
-                    {/* Botón Explorar con tus estilos originales y contraste correcto */}
-                    {/* image_8.png shows white button with red text */}
-                    <div className="flex items-center justify-center">
-                        <Link 
-                            to="/productos" 
-                            className="btn-register bg-white text-red-600 font-bold py-3 px-8 rounded hover:bg-gray-100 transition-transform transform hover:scale-105 shadow-2xl"
-                            style={{ fontSize: '1.2rem', padding: '15px 30px', display: 'inline-block' }}
-                        >
-                            Explorar Catálogo
-                        </Link>
-                    </div>
+                    {/* Botón Explorar */}
+                    <Link 
+                        to="/productos" 
+                        className="bg-white text-red-600 font-bold py-4 px-10 rounded-lg hover:bg-gray-100 transition-transform transform hover:scale-105 shadow-2xl mt-4"
+                        style={{ fontSize: '1.2rem' }}
+                    >
+                        Explorar Catálogo
+                    </Link>
+
                 </div>
             </section>
             
-            {/* 2. SECCIÓN DE BENEFICIOS (remains as in previously provided code) */}
+            {/* 2. SECCIÓN DE BENEFICIOS (Intacta) */}
             <section className="py-20 bg-gray-50 text-center px-4">
                 <h2 className="text-3xl font-bold text-gray-800 mb-10">¿Por qué elegir COSITAS?</h2>
                 
