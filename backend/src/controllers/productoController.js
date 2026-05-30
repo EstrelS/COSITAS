@@ -175,10 +175,11 @@ const obtenerProductoId = async (req, res) => {
 const actualizarProducto = async (req, res) => {
     try {
         const { id } = req.params;
-        const { titulo, precio, descripcion } = req.body;
+        // 1. AÑADIDO: Agregamos 'fotos' a la desestructuración del cuerpo
+        const { titulo, precio, descripcion, fotos } = req.body;
 
-        // Validar que al menos UN campo esté siendo actualizado
-        if (titulo === undefined && precio === undefined && descripcion === undefined) {
+        // 2. MODIFICADO: Validar que al menos UN campo (incluyendo fotos) esté siendo actualizado
+        if (titulo === undefined && precio === undefined && descripcion === undefined && fotos === undefined) {
             return res.status(400).json({ 
                 success: false, 
                 errors: ['Debes modificar al menos un campo'] 
@@ -233,8 +234,15 @@ const actualizarProducto = async (req, res) => {
         }
 
         if (descripcion !== undefined) {
+            // Nota: Mantenemos 'decripcion' por si así se llama exactamente tu columna en MySQL
             updateQuery += 'decripcion = ?, ';
             updateValues.push(descripcion);
+        }
+
+        // 3. NUEVO: Si el usuario editó la foto, la añadimos a la Query como string JSON
+        if (fotos !== undefined) {
+            updateQuery += 'fotos = ?, ';
+            updateValues.push(Array.isArray(fotos) ? JSON.stringify(fotos) : fotos);
         }
 
         // Remover la última coma y espacio
@@ -245,13 +253,13 @@ const actualizarProducto = async (req, res) => {
         const connection = await pool.getConnection();
         await connection.query(updateQuery, updateValues);
         connection.release();
+        
         res.json({ success: true, message: 'Producto actualizado exitosamente' });
     } catch (err) { 
         console.error("Error en actualizarProducto:", err);
         res.status(500).json({ success: false, message: err.message }); 
     }
 };
-
 const pausarProducto = async (req, res) => {
     try {
         const { id } = req.params;
@@ -269,13 +277,12 @@ const pausarProducto = async (req, res) => {
 };
 
 // --- FUNCIÓN DE REACTIVACIÓN CORREGIDA ---
-// Esta función ahora es directa y no valida otros campos para evitar errores con Joi
 const reactivarProducto = async (req, res) => {
     try {
         const { id } = req.params;
         const connection = await pool.getConnection();
         
-        // Verificación de seguridad: Evitar que el vendedor reactive un producto suspendido por el admin
+        // Verificación de seguridad
         if (req.user.tipo_usuario !== 'administrador') {
             const [prods] = await connection.query('SELECT estado_producto FROM productos WHERE id_producto = ?', [id]);
             if (prods.length > 0 && prods[0].estado_producto === 'suspendido') {
@@ -284,8 +291,9 @@ const reactivarProducto = async (req, res) => {
             }
         }
 
+        // CORREGIDO: comillas simples para 'activo'
         const [result] = await connection.query(
-            'UPDATE productos SET estado_producto = "activo" WHERE id_producto = ?', 
+            "UPDATE productos SET estado_producto = 'activo' WHERE id_producto = ?", 
             [id]
         );
         
@@ -313,8 +321,7 @@ module.exports = {
     actualizarProducto, 
     eliminarProducto, 
     pausarProducto, 
-    reactivarProducto
-    , 
+    reactivarProducto, 
     // Exported for testing purposes
     validarPrecio,
     validarContenidoApropiado

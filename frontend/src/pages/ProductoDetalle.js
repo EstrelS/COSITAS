@@ -10,22 +10,18 @@ const ProductoDetalle = () => {
   const navigate = useNavigate();
   const [producto, setProducto] = useState(null);
   const [calificaciones, setCalificaciones] = useState([]);
-  const [esReferencia, setEsReferencia] = useState(false);
   const [cantidad, setCantidad] = useState(1);
   const [esFavorito, setEsFavorito] = useState(false);
   const { usuario, isAuthenticated } = authStore();
 
-  // Estados para el Modal de Editar (Admin)
   const [mostrarModalEditar, setMostrarModalEditar] = useState(false);
   const [formEditar, setFormEditar] = useState({ titulo: '', precio: '', descripcion: '' });
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
-  // Estados para Modal de Reportes
   const [mostrarModalReporte, setMostrarModalReporte] = useState(false);
   const [formReporte, setFormReporte] = useState({ motivo: '', descripcion: '' });
   const [enviandoReporte, setEnviandoReporte] = useState(false);
 
-  // Estados para Modal de Reseña (Solo compradores verificados)
   const [transaccionPendiente, setTransaccionPendiente] = useState(null);
   const [modalResena, setModalResena] = useState(false);
   const [formResena, setFormResena] = useState({ calificacion: 5, comentario: '' });
@@ -80,7 +76,6 @@ const ProductoDetalle = () => {
     }
   };
 
-  // Lógica de Suspensión
   const handleDarDeBaja = async () => {
     try {
       await axiosInstance.patch(`/admin/productos/${id}/suspender`);
@@ -89,7 +84,6 @@ const ProductoDetalle = () => {
     } catch (err) { toast.error('Error al suspender'); }
   };
 
-  // Lógica de Reactivación
   const handleReactivar = async () => {
     try {
       await axiosInstance.patch(`/admin/productos/${id}/reactivar`);
@@ -98,7 +92,6 @@ const ProductoDetalle = () => {
     } catch (err) { toast.error('Error al reactivar'); }
   };
 
-  // Lógica de Edición (Admin)
   const abrirModalEditar = () => {
     setFormEditar({
       titulo: producto.titulo,
@@ -115,7 +108,7 @@ const ProductoDetalle = () => {
       await axiosInstance.patch(`/admin/productos/${id}/editar`, formEditar);
       toast.success('Producto editado exitosamente por Admin');
       setMostrarModalEditar(false);
-      fetchProducto(); // Recargar los datos visuales
+      fetchProducto(); 
     } catch (err) {
       toast.error(err.response?.data?.errors?.[0] || 'Error al editar producto');
     } finally {
@@ -123,24 +116,53 @@ const ProductoDetalle = () => {
     }
   };
 
-  // Lógica para herramientas del Vendedor
   const handlePausar = async () => {
     try {
       await axiosInstance.patch(`/productos/${id}/pausar`);
       toast.success('Producto pausado correctamente');
-      fetchProducto(); // Recarga para actualizar el estado visual
+      fetchProducto(); 
     } catch (err) { toast.error('Error al pausar el producto'); }
   };
 
-  const handleAgregarCarrito = async () => {
+  // --- LÓGICA DE CARRITO ACTUALIZADA A LOCALSTORAGE ---
+  const agregarAlNavegador = () => {
+    const carritoActual = JSON.parse(localStorage.getItem('carrito')) || [];
+    const indice = carritoActual.findIndex(item => String(item.id_producto) === String(id));
+
+    if (indice !== -1) {
+      carritoActual[indice].cantidad += cantidad;
+    } else {
+      carritoActual.push({
+        id_producto: id,
+        nombre: producto.titulo,
+        precio: producto.precio,
+        foto: producto.fotos, 
+        cantidad: cantidad
+      });
+    }
+    localStorage.setItem('carrito', JSON.stringify(carritoActual));
+  };
+
+  const handleAgregarCarrito = () => {
     if (!isAuthenticated) return toast.error('Inicia sesión para comprar');
     try {
-      await axiosInstance.post('/carrito', { id_producto: id, cantidad });
+      agregarAlNavegador();
       toast.success('Producto agregado al carrito');
     } catch (err) {
       toast.error('Error al agregar al carrito');
     }
   };
+
+  const handleComprarAhora = () => {
+    if (!isAuthenticated) return toast.error('Inicia sesión para comprar');
+    try {
+      agregarAlNavegador();
+      navigate('/carrito'); 
+    } catch (err) {
+      toast.error('Error al procesar la compra');
+    }
+  };
+  // ----------------------------------------------------
 
   const handleToggleFavorito = async () => {
     if (!isAuthenticated) return toast.error('Inicia sesión para agregar a favoritos');
@@ -156,16 +178,6 @@ const ProductoDetalle = () => {
       }
     } catch (err) {
       toast.error('Error al actualizar favoritos');
-    }
-  };
-
-  const handleComprarAhora = async () => {
-    if (!isAuthenticated) return toast.error('Inicia sesión para comprar');
-    try {
-      await axiosInstance.post('/carrito', { id_producto: id, cantidad });
-      navigate('/carrito'); // Redirige directamente al carrito para proceder al pago
-    } catch (err) {
-      toast.error('Error al procesar la compra');
     }
   };
 
@@ -205,8 +217,8 @@ const ProductoDetalle = () => {
       });
       toast.success('¡Reseña publicada con éxito!');
       setModalResena(false);
-      setTransaccionPendiente(null); // Ocultar el botón
-      fetchCalificaciones(); // Recargar las reseñas visualmente
+      setTransaccionPendiente(null);
+      fetchCalificaciones(); 
     } catch (err) {
       toast.error(err.response?.data?.errors?.[0] || 'Error al publicar la reseña');
     } finally {
@@ -241,7 +253,6 @@ const ProductoDetalle = () => {
             <p className="text-sm">Estado: {producto.estado_producto}</p>
           </div>
 
-          {/* Lógica de botones Admin */}
           {usuario?.tipo_usuario === 'administrador' && (
             <div className="flex flex-col gap-2">
               {producto.estado_producto === 'suspendido' ? (
@@ -254,7 +265,6 @@ const ProductoDetalle = () => {
             </div>
           )}
           
-          {/* Herramientas exclusivas del Vendedor (creador del producto) */}
           {usuario?.id_usuario === producto.id_vendedor && (
             <div className="mt-6 flex flex-col gap-3 border-t pt-4">
               <p className="text-gray-600 font-bold mb-2">Tus herramientas de vendedor:</p>
@@ -271,7 +281,6 @@ const ProductoDetalle = () => {
             </div>
           )}
 
-          {/* Descripción del producto */}
           <div className="mt-6">
             <h2 className="text-xl font-bold mb-2">Descripción</h2>
             <div className="bg-white p-4 rounded-xl border shadow-sm text-gray-700 whitespace-pre-line leading-relaxed">
@@ -279,7 +288,6 @@ const ProductoDetalle = () => {
             </div>
           </div>
 
-          {/* Acciones de compra (sólo para compradores o invitados, no para el creador del producto) */}
           {usuario?.tipo_usuario !== 'administrador' && usuario?.id_usuario !== producto.id_vendedor && (
             <div className="mt-8 space-y-4 border-t pt-6">
               <div className="flex items-center gap-4">
@@ -323,7 +331,6 @@ const ProductoDetalle = () => {
         </div>
       </div>
 
-      {/* Sección de Comentarios y Reseñas */}
       <div className="mt-16 border-t pt-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -356,7 +363,6 @@ const ProductoDetalle = () => {
         )}
       </div>
 
-      {/* --- MODAL EDITAR PRODUCTO (SÓLO ADMIN) --- */}
       {mostrarModalEditar && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
@@ -383,7 +389,6 @@ const ProductoDetalle = () => {
         </div>
       )}
 
-      {/* --- MODAL PARA AÑADIR RESEÑA --- */}
       {modalResena && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
@@ -419,7 +424,6 @@ const ProductoDetalle = () => {
         </div>
       )}
 
-      {/* --- MODAL REPORTAR PRODUCTO --- */}
       {mostrarModalReporte && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">

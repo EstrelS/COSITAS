@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { getCSRFToken } from '../utils/csrfToken';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/v1';
+// Si existe la variable de entorno, la usa. Si no, usa tu URL de Render por defecto.
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://cositas-giok.onrender.com/api/v1';
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 60000,
