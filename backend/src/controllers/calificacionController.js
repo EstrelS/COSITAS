@@ -24,7 +24,7 @@ const crearCalificacion = async (req, res) => {
         }
 
         const [result] = await connection.query(
-            'INSERT INTO calificaciones (id_calificador, id_calificado, id_transaccion, puntiacion, omentario) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO calificaciones (id_calificador, id_calificado, id_transaccion, puntiacion, comentario) VALUES (?, ?, ?, ?, ?)',
             [id_usuario, trans[0].id_vendedor, id_transaccion, calificacion, comentario]
         );
 
@@ -51,7 +51,7 @@ const obtenerCalificacionesProducto = async (req, res) => {
         connection = await pool.getConnection();
 
         const [calificaciones] = await connection.query(`
-        SELECT c.id_calificacion, c.puntiacion AS calificacion, c.omentario AS comentario, u.nombre, u.foto_perfil_url
+        SELECT c.id_calificacion, c.puntiacion AS calificacion, c.comentario AS comentario, u.nombre, u.foto_perfil_url
         FROM calificaciones c
         JOIN transacciones t ON c.id_transaccion = t.id_transacciones
         JOIN usuarios u ON c.id_calificador = u.id_usuario
@@ -75,7 +75,7 @@ const obtenerCalificacionesUsuario = async (req, res) => {
         connection = await pool.getConnection();
 
         const [calificaciones] = await connection.query(`
-        SELECT c.id_calificacion, c.puntiacion AS calificacion, c.omentario AS comentario, 
+        SELECT c.id_calificacion, c.puntiacion AS calificacion, c.comentario AS comentario, 
                p.id_producto, p.titulo AS nombre_producto, p.fotos
         FROM calificaciones c
         JOIN transacciones t ON c.id_transaccion = t.id_transacciones

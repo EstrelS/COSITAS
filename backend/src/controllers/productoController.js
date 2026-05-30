@@ -29,7 +29,7 @@ const validarPrecio = (precio, precioStr = '') => {
     return { valido: true };
 };
 
-// Función para validar contenido apropiado
+// Función para validar contenido apropiado (Exported for testing)
 const validarContenidoApropiado = (texto) => {
     const textoLower = texto.toLowerCase().trim();
     
@@ -84,42 +84,14 @@ const crearProducto = async (req, res) => {
         const id_vendedor = req.user.id_usuario;
         connection = await pool.getConnection();
         await connection.beginTransaction();
-        
-        let result;
-        try {
-            // Intento 1: Con decripcion y fotos
-            [result] = await connection.query(
-                'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, "activo")',
-                [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
-            );
-        } catch (e1) {
-            try {
-                // Intento 2: Con descripcion (bien escrito) y fotos
-                [result] = await connection.query(
-                    'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, "activo")',
-                    [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
-                );
-            } catch (e2) {
-                try {
-                    // Intento 3: Sin fotos y con decripcion
-                    [result] = await connection.query(
-                        'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, estado_producto) VALUES (?, ?, ?, ?, ?, ?, "activo")',
-                        [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria]
-                    );
-                } catch (e3) {
-                    // Intento 4: Sin fotos y con descripcion
-                    [result] = await connection.query(
-                        'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, estado_producto) VALUES (?, ?, ?, ?, ?, ?, "activo")',
-                        [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria]
-                    );
-                }
-            }
-        }
 
-        if (!result) {
-            throw new Error("La tabla productos no coincide con ninguna de las estructuras esperadas.");
-        }
-        
+        // Asumiendo que la columna en la base de datos es 'decripcion' (con el typo)
+        // y que la columna 'fotos' existe y almacena un JSON string.
+        const [result] = await connection.query(
+            'INSERT INTO productos (id_vendedor, titulo, precio, cantidad_disponible, decripcion, id_categoria, fotos, estado_producto) VALUES (?, ?, ?, ?, ?, ?, ?, "activo")',
+            [id_vendedor, titulo, precio, cantidad_disponible, descripcion, id_categoria, JSON.stringify(fotos || [])]
+        );
+
         const id_producto = result.insertId;
         
         // Guardar cada foto en imagenes_producto (con orden)
@@ -127,8 +99,8 @@ const crearProducto = async (req, res) => {
             for (let i = 0; i < fotos.length; i++) {
                 try {
                     await connection.query(
-                        'INSERT INTO imagenes_producto (id_producto, url_imagen, orden) VALUES (?, ?, ?)',
-                        [id_producto, fotos[i], i + 1]
+                        'INSERT INTO imagenes_producto (id_producto, url_imagen) VALUES (?, ?)',
+                        [id_producto, fotos[i]]
                     );
                 } catch (imgErr) {
                     console.log('⚠️ Aviso: La tabla imagenes_producto no existe o dio error:', imgErr.message);
@@ -342,4 +314,8 @@ module.exports = {
     eliminarProducto, 
     pausarProducto, 
     reactivarProducto
+    , 
+    // Exported for testing purposes
+    validarPrecio,
+    validarContenidoApropiado
 };
